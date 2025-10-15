@@ -14,12 +14,12 @@ passlib[bcrypt]==1.7.4
 bcrypt==4.1.2
 
 # ML and Computer Vision
-ultralytics==8.1.0
-opencv-python==4.9.0.80
-cvzone==1.6.1
-torch==2.1.2
-torchvision==0.16.2
-Pillow==10.2.0
+ultralytics>=8.0.0
+opencv-python>=4.8.0
+cvzone>=1.6.0
+torch>=2.0.0
+torchvision>=0.15.0
+Pillow>=10.0.0
 
 # Utilities
 python-dotenv==1.0.0
