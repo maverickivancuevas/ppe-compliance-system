@@ -72,3 +72,16 @@ class Settings(BaseSettings):
 
 settings = Settings()
 settings.ensure_directories()
+
+# Security validation for production
+if settings.ENVIRONMENT == "production":
+    if settings.DEFAULT_ADMIN_PASSWORD == "admin123":
+        raise ValueError(
+            "CRITICAL SECURITY ERROR: Default admin password 'admin123' detected in production! "
+            "You MUST set DEFAULT_ADMIN_PASSWORD environment variable to a strong password."
+        )
+    if settings.SECRET_KEY == "CHANGE_THIS_TO_A_SECURE_RANDOM_KEY_USE_OPENSSL_RAND_HEX_32":
+        raise ValueError(
+            "CRITICAL SECURITY ERROR: Default SECRET_KEY detected in production! "
+            "You MUST set SECRET_KEY environment variable to a secure random key."
+        )

@@ -166,6 +166,13 @@ def get_detection_stats(
     if not end_date:
         end_date = datetime.utcnow()
 
+    # Validate date range
+    if start_date > end_date:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="start_date must be before or equal to end_date"
+        )
+
     query = db.query(DetectionEvent).filter(
         and_(
             DetectionEvent.timestamp >= start_date,

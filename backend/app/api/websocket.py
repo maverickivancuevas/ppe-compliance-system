@@ -224,8 +224,13 @@ async def process_camera_stream(
             await asyncio.sleep(0.03)  # ~30 FPS
 
     finally:
-        cap.release()
+        if cap is not None:
+            cap.release()
         db.close()  # Close the database session
+        # Clean up stream tracking to prevent memory leak
+        if camera_id in manager.active_streams:
+            del manager.active_streams[camera_id]
+            logger.info(f"Cleaned up stream tracking for camera {camera_id}")
 
 
 async def start_stream_handler(camera_id: str, websocket: WebSocket, db: Session):

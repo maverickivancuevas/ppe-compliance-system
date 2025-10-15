@@ -39,17 +39,17 @@ class DetectionEventResponse(DetectionEventBase):
     @classmethod
     def from_orm(cls, obj):
         import json
-        # Convert string booleans to actual booleans
+        # Database stores booleans directly, no conversion needed
         data = {
             "id": obj.id,
             "camera_id": obj.camera_id,
             "timestamp": obj.timestamp,
-            "person_detected": obj.person_detected == "true",
-            "hardhat_detected": obj.hardhat_detected == "true",
-            "no_hardhat_detected": obj.no_hardhat_detected == "true",
-            "safety_vest_detected": obj.safety_vest_detected == "true",
-            "no_safety_vest_detected": obj.no_safety_vest_detected == "true",
-            "is_compliant": obj.is_compliant == "true",
+            "person_detected": bool(obj.person_detected),
+            "hardhat_detected": bool(obj.hardhat_detected),
+            "no_hardhat_detected": bool(obj.no_hardhat_detected),
+            "safety_vest_detected": bool(obj.safety_vest_detected),
+            "no_safety_vest_detected": bool(obj.no_safety_vest_detected),
+            "is_compliant": bool(obj.is_compliant),
             "confidence_scores": json.loads(obj.confidence_scores) if obj.confidence_scores else None,
             "snapshot_url": obj.snapshot_url,
             "violation_type": obj.violation_type,
