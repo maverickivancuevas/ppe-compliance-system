@@ -1,0 +1,270 @@
+# PPE Compliance System - Git Ignore File
+
+# Invalid Windows filenames
+nul
+NUL
+
+# Environment Files (CRITICAL - Contains Secrets!)
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+backend/venv/
+backend/env/
+backend/ENV/
+backend/env.bak/
+backend/venv.bak/
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+.idea_modules/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+backend/ppe_compliance.db
+backend/*.db
+
+# Logs
+*.log
+logs/
+backend/logs/
+*.log.*
+
+# Uploads
+backend/uploads/
+uploads/
+
+# Model Files (Large files)
+*.pt
+*.pth
+*.onnx
+*.weights
+*.h5
+
+# Node.js / Next.js
+node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/dist/
+.next/
+out/
+
+# Dependencies
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Testing
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Compiled files
+*.pyc
+*.pyo
+*.compiled
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Documentation build
+docs/_build/
+site/
+
+# Secrets and Credentials
+secrets.json
+credentials.json
+*.pem
+*.key
+*.cert
+*.crt
+*.cer
+
+# Cache
+.cache/
+*.cache
+
+# Python Distribution
+*.egg
+*.egg-info
+dist/
+build/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre
+.pyre/
+
+# Pylint
+.pylint.d/
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+nosetests.xml
+coverage.xml
+*.cover
+
+# Translations
+*.mo
+*.pot
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# IPython
+profile_default/
+ipython_config.py
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+
+# Pycharm
+.idea
+
+# Environments
+.venv
+venv/
+ENV/
+
+# Local development
+.local/
+
+# Vercel
+.vercel
+
+# Turbo
+.turbo
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+
+# Exclude all .tfvars files
+*.tfvars
+
+# Ignore override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Include override files you want
+!example_override.tf
+
+# Include tfplan files
+*tfplan*
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc

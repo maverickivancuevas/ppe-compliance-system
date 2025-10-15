@@ -1,0 +1,39 @@
+# FastAPI and Server
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+websockets==12.0
+
+# Database
+sqlalchemy==2.0.25
+alembic==1.13.1
+
+# Authentication
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.1.2
+
+# ML and Computer Vision
+ultralytics==8.1.0
+opencv-python==4.9.0.80
+cvzone==1.6.1
+torch==2.1.2
+torchvision==0.16.2
+Pillow==10.2.0
+
+# Utilities
+python-dotenv==1.0.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# CORS (using FastAPI built-in CORS middleware)
+
+# PDF Generation
+reportlab==4.0.9
+fpdf2==2.7.7
+
+# CSV Export
+pandas==2.1.4
+
+# Date handling
+python-dateutil==2.8.2

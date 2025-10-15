@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: ppe-compliance-backend
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        value: sqlite:///./ppe_compliance.db
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: DEFAULT_ADMIN_EMAIL
+        value: admin@example.com
+      - key: DEFAULT_ADMIN_PASSWORD
+        generateValue: true
+    disk:
+      name: ppe-data
+      mountPath: /opt/render/project/src
+      sizeGB: 1
