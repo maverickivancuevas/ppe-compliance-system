@@ -39,8 +39,8 @@ class Settings(BaseSettings):
     MODEL_PATH: str = "best.pt"  # YOLOv8s model in backend directory
 
     # Default Admin User (loaded from environment)
-    DEFAULT_ADMIN_EMAIL: str = "admin@example.com"
-    DEFAULT_ADMIN_PASSWORD: str = "admin123"
+    DEFAULT_ADMIN_EMAIL: str = "admin@ppe-system.com"
+    DEFAULT_ADMIN_PASSWORD: str = "@Admin0703"
     DEFAULT_ADMIN_NAME: str = "System Administrator"
 
     # Email/SMTP Settings

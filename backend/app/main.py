@@ -50,6 +50,7 @@ async def startup_event():
         user_count = db.query(User).count()
         if user_count == 0:
             default_admin = User(
+                username="admin",
                 email=settings.DEFAULT_ADMIN_EMAIL,
                 full_name=settings.DEFAULT_ADMIN_NAME,
                 hashed_password=get_password_hash(settings.DEFAULT_ADMIN_PASSWORD),
@@ -60,6 +61,7 @@ async def startup_event():
             db.commit()
             logger.warning("=" * 60)
             logger.warning("Default admin user created:")
+            logger.warning(f"Username: admin")
             logger.warning(f"Email: {settings.DEFAULT_ADMIN_EMAIL}")
             logger.warning(f"Password: {settings.DEFAULT_ADMIN_PASSWORD}")
             logger.warning("CRITICAL: CHANGE THIS PASSWORD IMMEDIATELY AFTER FIRST LOGIN!")
