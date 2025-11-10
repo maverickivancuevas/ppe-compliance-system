@@ -155,11 +155,18 @@ async def process_camera_stream(
         })
 
         frame_count = 0
+        is_video_file = isinstance(source, str) and (source.endswith('.mp4') or source.endswith('.avi') or 'http' in source)
 
         while cap.isOpened() and manager.is_stream_active(camera_id):
             success, frame = cap.read()
             if not success:
-                break
+                # If it's a video file, loop it
+                if is_video_file:
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Reset to beginning
+                    logger.info(f"Video ended, looping for camera {camera_id}")
+                    continue
+                else:
+                    break
 
             # Perform detection (no tracking)
             annotated_frame, results = yolo_service.detect_with_tracking(frame)
