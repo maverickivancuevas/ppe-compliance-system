@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
 from ..core.database import Base
+from ..core.timezone import get_philippine_time_naive
 
 
 class DetectionEvent(Base):
@@ -10,7 +11,10 @@ class DetectionEvent(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     camera_id = Column(String, ForeignKey("cameras.id", ondelete="CASCADE"), nullable=False, index=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    timestamp = Column(DateTime, default=get_philippine_time_naive, nullable=False, index=True)
+
+    # Tracking ID from ByteTrack (assigned by YOLO tracking)
+    track_id = Column(String, nullable=True, index=True)  # e.g., "1", "2", "3" per camera
 
     # Detection results (boolean fields)
     person_detected = Column(Boolean, default=False, nullable=False)
@@ -29,7 +33,11 @@ class DetectionEvent(Base):
     # Violation details
     violation_type = Column(String, nullable=True)  # e.g., "No Hardhat", "No Safety Vest", "Both Missing"
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    # Archiving
+    archived = Column(Boolean, default=False, nullable=False, index=True)
+    archived_at = Column(DateTime, nullable=True)
+
+    created_at = Column(DateTime, default=get_philippine_time_naive)
 
     # Relationships
     camera = relationship("Camera", back_populates="detection_events")
@@ -40,6 +48,7 @@ class DetectionEvent(Base):
         Index('idx_camera_timestamp', 'camera_id', 'timestamp'),
         Index('idx_compliant_timestamp', 'is_compliant', 'timestamp'),
         Index('idx_person_timestamp', 'person_detected', 'timestamp'),
+        Index('idx_camera_track', 'camera_id', 'track_id'),  # For querying specific tracked person
     )
 
     @property

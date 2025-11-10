@@ -118,8 +118,11 @@ class VideoProcessor:
         if not ret:
             return None
 
-        # Run YOLO detection
-        results = self.detector.predict(frame)
+        # Run YOLO detection with automatic device optimization
+        # FP16 enabled only if GPU is available, otherwise uses FP32 on CPU
+        import torch
+        use_half = torch.cuda.is_available()  # Auto: True for GPU, False for CPU
+        results = self.detector.predict(frame, half=use_half, verbose=False)
 
         # Draw bounding boxes on frame
         annotated_frame = results[0].plot()

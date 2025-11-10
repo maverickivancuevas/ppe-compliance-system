@@ -7,8 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { FileText, Download, Calendar, TrendingUp } from 'lucide-react';
+import { reportsAPI } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ReportsPage() {
+  const { toast } = useToast();
   const [reportConfig, setReportConfig] = useState({
     type: 'weekly',
     format: 'pdf',
@@ -17,39 +20,107 @@ export default function ReportsPage() {
   });
   const [generating, setGenerating] = useState(false);
 
-  // Mock previous reports
-  const previousReports = [
-    {
-      id: '1',
-      title: 'Weekly Compliance Report',
-      date: '2024-01-08',
-      format: 'PDF',
-      size: '2.4 MB',
-    },
-    {
-      id: '2',
-      title: 'Monthly Summary Report',
-      date: '2024-01-01',
-      format: 'CSV',
-      size: '156 KB',
-    },
-    {
-      id: '3',
-      title: 'Daily Violations Report',
-      date: '2023-12-28',
-      format: 'PDF',
-      size: '1.8 MB',
-    },
-  ];
+  const downloadFile = (blob: Blob, filename: string) => {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
 
   const handleGenerateReport = async () => {
     setGenerating(true);
 
-    // Simulate report generation
-    setTimeout(() => {
+    try {
+      const response = await reportsAPI.generate({
+        report_type: reportConfig.type,
+        format: reportConfig.format,
+        start_date: reportConfig.start_date,
+        end_date: reportConfig.end_date
+      });
+
+      // Extract filename from Content-Disposition header
+      const contentDisposition = response.headers['content-disposition'];
+      const filenameMatch = contentDisposition?.match(/filename="?(.+)"?/);
+      const filename = filenameMatch ? filenameMatch[1] : `report.${reportConfig.format}`;
+
+      downloadFile(response.data, filename);
+
+      toast({
+        title: 'Success',
+        description: `${reportConfig.format.toUpperCase()} report generated successfully`
+      });
+    } catch (error: any) {
+      console.error('Error generating report:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.detail || 'Failed to generate report',
+        variant: 'destructive'
+      });
+    } finally {
       setGenerating(false);
-      alert(`Report generated successfully!\n\nType: ${reportConfig.type}\nFormat: ${reportConfig.format}\n\nIn production, this would generate a real ${reportConfig.format.toUpperCase()} file.`);
-    }, 2000);
+    }
+  };
+
+  const handleQuickReport = async (reportType: string, format: string = 'pdf') => {
+    try {
+      toast({
+        title: 'Generating Report',
+        description: 'Please wait...'
+      });
+
+      const response = await reportsAPI.generateQuick(reportType, format);
+
+      const contentDisposition = response.headers['content-disposition'];
+      const filenameMatch = contentDisposition?.match(/filename="?(.+)"?/);
+      const filename = filenameMatch ? filenameMatch[1] : `quick_report_${reportType}.${format}`;
+
+      downloadFile(response.data, filename);
+
+      toast({
+        title: 'Success',
+        description: `Quick report generated successfully`
+      });
+    } catch (error: any) {
+      console.error('Error generating quick report:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.detail || 'Failed to generate quick report',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleDownloadTemplate = async (templateType: string) => {
+    try {
+      toast({
+        title: 'Downloading Template',
+        description: 'Please wait...'
+      });
+
+      const response = await reportsAPI.downloadTemplate(templateType);
+
+      const contentDisposition = response.headers['content-disposition'];
+      const filenameMatch = contentDisposition?.match(/filename="?(.+)"?/);
+      const filename = filenameMatch ? filenameMatch[1] : `${templateType}_template.pdf`;
+
+      downloadFile(response.data, filename);
+
+      toast({
+        title: 'Success',
+        description: 'Template downloaded successfully'
+      });
+    } catch (error: any) {
+      console.error('Error downloading template:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.detail || 'Failed to download template',
+        variant: 'destructive'
+      });
+    }
   };
 
   return (
@@ -201,15 +272,30 @@ export default function ReportsPage() {
                 <CardDescription>Generate common reports instantly</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button variant="outline" className="w-full justify-start" size="sm">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  size="sm"
+                  onClick={() => handleQuickReport('today', reportConfig.format)}
+                >
                   <Calendar className="h-4 w-4 mr-2" />
                   Today's Summary
                 </Button>
-                <Button variant="outline" className="w-full justify-start" size="sm">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  size="sm"
+                  onClick={() => handleQuickReport('week', reportConfig.format)}
+                >
                   <TrendingUp className="h-4 w-4 mr-2" />
                   This Week
                 </Button>
-                <Button variant="outline" className="w-full justify-start" size="sm">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  size="sm"
+                  onClick={() => handleQuickReport('month', reportConfig.format)}
+                >
                   <FileText className="h-4 w-4 mr-2" />
                   Last 30 Days
                 </Button>
@@ -222,55 +308,46 @@ export default function ReportsPage() {
                 <CardDescription>Pre-configured report formats</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button variant="ghost" className="w-full justify-start text-sm" size="sm">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-sm"
+                  size="sm"
+                  onClick={() => handleDownloadTemplate('executive_summary')}
+                >
+                  <Download className="h-4 w-4 mr-2" />
                   Executive Summary
                 </Button>
-                <Button variant="ghost" className="w-full justify-start text-sm" size="sm">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-sm"
+                  size="sm"
+                  onClick={() => handleDownloadTemplate('detailed_violations')}
+                >
+                  <Download className="h-4 w-4 mr-2" />
                   Detailed Violations
                 </Button>
-                <Button variant="ghost" className="w-full justify-start text-sm" size="sm">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-sm"
+                  size="sm"
+                  onClick={() => handleDownloadTemplate('compliance_certificate')}
+                >
+                  <Download className="h-4 w-4 mr-2" />
                   Compliance Certificate
                 </Button>
-                <Button variant="ghost" className="w-full justify-start text-sm" size="sm">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-sm"
+                  size="sm"
+                  onClick={() => handleDownloadTemplate('audit_report')}
+                >
+                  <Download className="h-4 w-4 mr-2" />
                   Audit Report
                 </Button>
               </CardContent>
             </Card>
           </div>
         </div>
-
-        {/* Previous Reports */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Previous Reports</CardTitle>
-            <CardDescription>Download previously generated reports</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {previousReports.map((report) => (
-                <div
-                  key={report.id}
-                  className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <FileText className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{report.title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {report.date} • {report.format} • {report.size}
-                      </p>
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="sm">
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </DashboardLayout>
   );

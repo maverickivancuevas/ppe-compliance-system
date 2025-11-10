@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sidebar } from '@/components/layout/Sidebar';
-import { camerasAPI, detectionsAPI } from '@/lib/api';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { camerasAPI, analyticsAPI, workersAPI } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Camera, AlertCircle, TrendingUp, Play } from 'lucide-react';
+import { Camera, AlertCircle, TrendingUp, Play, HardHat, Users, CheckCircle, Clock } from 'lucide-react';
 import { Camera as CameraType } from '@/types';
 
 export default function SafetyManagerDashboard() {
@@ -20,6 +21,12 @@ export default function SafetyManagerDashboard() {
     complianceRate: 0,
     activeCameras: 0,
   });
+  const [workerStats, setWorkerStats] = useState({
+    total_workers: 0,
+    active_workers: 0,
+    inactive_workers: 0,
+    checked_in_today: 0,
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,9 +38,19 @@ export default function SafetyManagerDashboard() {
 
   const loadData = async () => {
     try {
-      const [camerasData, detectionStats] = await Promise.all([
+      // Calculate date range for last 7 days to match Analytics page
+      const endDate = new Date().toISOString().split('T')[0];
+      const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+      const [camerasData, detectionStats, workerStatsData] = await Promise.all([
         camerasAPI.getAll(),
-        detectionsAPI.getStats(),
+        analyticsAPI.getSummary({ start_date: startDate, end_date: endDate }),
+        workersAPI.getStats().catch(() => ({
+          total_workers: 0,
+          active_workers: 0,
+          inactive_workers: 0,
+          checked_in_today: 0,
+        })),
       ]);
 
       setCameras(camerasData);
@@ -43,6 +60,7 @@ export default function SafetyManagerDashboard() {
         complianceRate: detectionStats.compliance_rate,
         activeCameras: camerasData.filter((c: CameraType) => c.status === 'active').length,
       });
+      setWorkerStats(workerStatsData);
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
@@ -51,32 +69,26 @@ export default function SafetyManagerDashboard() {
   };
 
   const handleStartMonitoring = (cameraId: string) => {
-    router.push(`/safety-manager/monitor/${cameraId}`);
+    router.push(`/safety-manager/monitor/multi`);
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Loading...</p>
-      </div>
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-full">
+          <p>Loading...</p>
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <Sidebar />
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <header className="border-b border-border bg-card">
-          <div className="px-6 py-4">
-            <h1 className="text-2xl font-bold">Dashboard</h1>
-            <p className="text-sm text-muted-foreground">Overview of PPE compliance monitoring</p>
-          </div>
-        </header>
-
-        <main className="flex-1 p-6 overflow-auto">
+    <DashboardLayout>
+      <PageHeader
+        title="Dashboard"
+        description="Overview of PPE compliance monitoring"
+      />
+      <div className="p-6">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
@@ -111,6 +123,68 @@ export default function SafetyManagerDashboard() {
               <p className="text-xs text-muted-foreground mt-1">Last 7 days average</p>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Worker Statistics */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <HardHat className="h-5 w-5" />
+              Construction Workers
+            </h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push('/safety-manager/workers')}
+            >
+              View All Workers
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Total Workers</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{workerStats.total_workers}</div>
+                <p className="text-xs text-muted-foreground mt-1">Registered workers</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Active Workers</CardTitle>
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-500">{workerStats.active_workers}</div>
+                <p className="text-xs text-muted-foreground mt-1">Currently active</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Checked In Today</CardTitle>
+                <Clock className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-500">{workerStats.checked_in_today}</div>
+                <p className="text-xs text-muted-foreground mt-1">On site now</p>
+              </CardContent>
+            </Card>
+
+            <Card className="cursor-pointer hover:bg-accent" onClick={() => router.push('/safety-manager/workers/scan')}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
+                <HardHat className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm font-semibold text-primary">Scan QR Code</div>
+                <p className="text-xs text-muted-foreground mt-1">Check in/out worker</p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Available Cameras */}
@@ -222,8 +296,7 @@ export default function SafetyManagerDashboard() {
             </div>
           </CardContent>
         </Card>
-        </main>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

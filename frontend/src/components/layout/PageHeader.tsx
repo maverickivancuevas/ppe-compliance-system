@@ -4,9 +4,10 @@ interface PageHeaderProps {
   title: string;
   description?: string;
   action?: ReactNode;
+  children?: ReactNode;
 }
 
-export function PageHeader({ title, description, action }: PageHeaderProps) {
+export function PageHeader({ title, description, action, children }: PageHeaderProps) {
   return (
     <div className="flex items-center justify-between border-b bg-card px-6 py-4">
       <div>
@@ -15,7 +16,7 @@ export function PageHeader({ title, description, action }: PageHeaderProps) {
           <p className="text-sm text-muted-foreground mt-1">{description}</p>
         )}
       </div>
-      {action && <div>{action}</div>}
+      {(action || children) && <div>{action || children}</div>}
     </div>
   );
 }

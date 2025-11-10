@@ -1,13 +1,15 @@
 from fastapi import FastAPI, WebSocket, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
+from pathlib import Path
 from .core.config import settings
 from .core.database import init_db, get_db
 from .core.security import get_password_hash
 from .core.logger import get_logger
 from .models.user import User, UserRole
-from .api.routes import auth, users, cameras, detections
-from .api import alerts
+from .api.routes import auth, users, cameras, detections, reports, incidents, performance, recordings, person_tracking, near_miss, notifications, workers, attendance
+from .api import alerts, analytics
 from .api.websocket import manager, start_stream_handler
 
 # Initialize logger
@@ -28,6 +30,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files for uploads
+uploads_dir = Path(settings.UPLOAD_DIR)
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
 
 # Initialize database on startup
@@ -60,9 +67,24 @@ async def startup_event():
     finally:
         db.close()
 
+    # Start background archiving service
+    from .services.archiving_service import get_archiving_service
+    archiving_service = get_archiving_service(archive_days=30)
+    archiving_service.start_background_task(interval_hours=24)
+
     logger.info(f"{settings.APP_NAME} v{settings.APP_VERSION} started!")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info(f"API Docs: http://{settings.HOST}:{settings.PORT}/docs")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown"""
+    # Stop background archiving service
+    from .services.archiving_service import get_archiving_service
+    archiving_service = get_archiving_service()
+    archiving_service.stop_background_task()
+    logger.info(f"{settings.APP_NAME} shutdown complete")
 
 
 # Include routers
@@ -70,7 +92,19 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(cameras.router, prefix="/api")
 app.include_router(detections.router, prefix="/api")
+app.include_router(reports.router, prefix="/api")
+app.include_router(incidents.router, prefix="/api")
+app.include_router(performance.router)
 app.include_router(alerts.router)
+app.include_router(analytics.router)
+# Phase 4 routers
+app.include_router(recordings.router, prefix="/api/recordings", tags=["recordings"])
+app.include_router(person_tracking.router, prefix="/api/tracking", tags=["person-tracking"])
+app.include_router(near_miss.router, prefix="/api/near-miss", tags=["near-miss"])
+app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
+# Worker Management routers
+app.include_router(workers.router, prefix="/api/workers", tags=["workers"])
+app.include_router(attendance.router, prefix="/api/attendance", tags=["attendance"])
 
 
 # WebSocket endpoint for video streaming

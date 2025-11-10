@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import json
 from ...core.database import get_db
 from ...core.security import get_safety_manager_or_admin
+from ...core.timezone import get_philippine_time_naive
 from ...models.user import User
 from ...models.detection import DetectionEvent
 from ...models.camera import Camera
@@ -55,7 +56,7 @@ def create_manual_detection(
         is_compliant=detection.is_compliant,
         violation_type=detection.violation_type,
         confidence_scores=json.dumps(detection.confidence_scores),
-        timestamp=datetime.utcnow()
+        timestamp=get_philippine_time_naive()
     )
 
     db.add(detection_event)
@@ -80,7 +81,7 @@ def create_manual_detection(
             message=alert_message,
             severity=severity,
             acknowledged=False,
-            created_at=datetime.utcnow()
+            created_at=get_philippine_time_naive()
         )
         db.add(alert)
 
@@ -99,9 +100,10 @@ def get_all_detections(
     skip: int = 0,
     limit: int = 100,
     camera_id: Optional[str] = None,
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None,
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
     violations_only: bool = False,
+    compliant_only: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_safety_manager_or_admin)
 ):
@@ -114,15 +116,28 @@ def get_all_detections(
         query = query.filter(DetectionEvent.camera_id == camera_id)
 
     if start_date:
-        query = query.filter(DetectionEvent.timestamp >= start_date)
+        start_dt = datetime.fromisoformat(start_date.replace('Z', ''))
+        query = query.filter(DetectionEvent.timestamp >= start_dt)
 
     if end_date:
-        query = query.filter(DetectionEvent.timestamp <= end_date)
+        end_dt = datetime.fromisoformat(end_date.replace('Z', ''))
+        # Add 1 day to include all detections on end_date
+        # e.g., if end_date is 2025-10-26, we want to include detections until 2025-10-26 23:59:59
+        end_dt = end_dt + timedelta(days=1)
+        query = query.filter(DetectionEvent.timestamp < end_dt)
 
     if violations_only:
         query = query.filter(
             and_(
                 DetectionEvent.is_compliant == False,
+                DetectionEvent.person_detected == True
+            )
+        )
+
+    if compliant_only:
+        query = query.filter(
+            and_(
+                DetectionEvent.is_compliant == True,
                 DetectionEvent.person_detected == True
             )
         )
@@ -162,9 +177,9 @@ def get_detection_stats(
 
     # Default to last 7 days if no dates provided
     if not start_date:
-        start_date = datetime.utcnow() - timedelta(days=7)
+        start_date = get_philippine_time_naive() - timedelta(days=7)
     if not end_date:
-        end_date = datetime.utcnow()
+        end_date = get_philippine_time_naive()
 
     # Validate date range
     if start_date > end_date:

@@ -5,15 +5,21 @@ import cv2
 import base64
 import json
 import asyncio
+import uuid
 from typing import Optional
+from pathlib import Path
 from ..core.database import get_db
 from ..core.logger import get_logger
+from ..core.config import settings
 from ..core.exceptions import CameraConnectionError, DetectionSaveError
 from ..models.camera import Camera
 from ..models.detection import DetectionEvent
 from ..models.alert import Alert, AlertSeverity
+from ..models.incident import Incident, IncidentSeverity, IncidentStatus
 from ..services.yolo_service import get_yolo_service
+from ..services.email_service import get_email_service
 from datetime import datetime
+from ..core.timezone import get_philippine_time_naive
 
 logger = get_logger(__name__)
 
@@ -64,6 +70,30 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+def detect_partial_visibility(results: dict) -> tuple[bool, str]:
+    """
+    Detect if person is only partially visible (e.g., only head visible, body not in frame).
+
+    Args:
+        results: Detection results from YOLO
+
+    Returns:
+        Tuple of (is_partial, reason)
+    """
+    person_detected = results.get('person_detected', False)
+    hardhat_detected = results.get('hardhat_detected', False)
+    no_hardhat_detected = results.get('no_hardhat_detected', False)
+    safety_vest_detected = results.get('safety_vest_detected', False)
+    no_safety_vest_detected = results.get('no_safety_vest_detected', False)
+
+    # If person is detected but no vest-related detection at all (neither vest nor no-vest)
+    # This suggests the body/vest area is not visible in frame
+    if person_detected and not safety_vest_detected and not no_safety_vest_detected:
+        return True, "Partial Detection - Body/Vest area not visible"
+
+    return False, ""
+
+
 async def process_camera_stream(
     camera_id: str,
     camera: Camera,
@@ -92,9 +122,9 @@ async def process_camera_stream(
 
         stream_source = camera.stream_url if camera.stream_url else "0"
 
-        # Track last violation time to avoid spam
-        last_violation_time = None
-        violation_cooldown = 5  # seconds
+        # Cooldown timer per camera (10 seconds)
+        last_detection_save_time = None
+        cooldown_seconds = 10
 
         # Convert stream_source to integer if it's a digit
         try:
@@ -125,15 +155,17 @@ async def process_camera_stream(
         })
 
         frame_count = 0
-        detection_interval = 30  # Save detection every 30 frames (1 sec at 30fps)
 
         while cap.isOpened() and manager.is_stream_active(camera_id):
             success, frame = cap.read()
             if not success:
                 break
 
-            # Perform detection
-            annotated_frame, results = yolo_service.detect(frame)
+            # Perform detection (no tracking)
+            annotated_frame, results = yolo_service.detect_with_tracking(frame)
+
+            # Check for partial visibility
+            is_partial, partial_reason = detect_partial_visibility(results)
 
             # Encode frame to base64 for transmission
             _, buffer = cv2.imencode('.jpg', annotated_frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
@@ -149,19 +181,37 @@ async def process_camera_stream(
                     'is_compliant': results['is_compliant'],
                     'safety_status': results['safety_status'],
                     'violation_type': results.get('violation_type'),
-                    'confidence_scores': results['confidence_scores']
+                    'confidence_scores': results['confidence_scores'],
+                    'person_detected': results.get('person_detected', False),
+                    'person_count': sum(1 for d in results.get('detections', []) if d.get('class') == 'Person'),
+                    'is_partial': is_partial,
+                    'partial_reason': partial_reason
                 },
-                'timestamp': datetime.utcnow().isoformat()
+                'timestamp': get_philippine_time_naive().isoformat()
             }
 
             # Broadcast to all connected clients
             await manager.broadcast(camera_id, message)
 
-            # Save detection event periodically
-            if save_detections and frame_count % detection_interval == 0 and results['person_detected']:
+            # Save detection with cooldown timer (only violations)
+            current_time = get_philippine_time_naive()
+
+            # Check if cooldown period has passed
+            can_save = (
+                last_detection_save_time is None or
+                (current_time - last_detection_save_time).total_seconds() >= cooldown_seconds
+            )
+
+            # Only save if:
+            # 1. Cooldown has passed
+            # 2. Person is detected
+            # 3. Person is NOT compliant (violation)
+            # 4. Detection is NOT partial (full body visible)
+            if save_detections and can_save and results.get('person_detected', False) and not results['is_compliant'] and not is_partial:
                 try:
                     detection_event = DetectionEvent(
                         camera_id=camera_id,
+                        track_id=None,  # No longer using track_id
                         person_detected=results['person_detected'],
                         hardhat_detected=results['hardhat_detected'],
                         no_hardhat_detected=results['no_hardhat_detected'],
@@ -175,48 +225,45 @@ async def process_camera_stream(
                     db.commit()
                     db.refresh(detection_event)
 
-                    # Create alert for violations
-                    if not results['is_compliant'] and results['person_detected']:
-                        current_time = datetime.utcnow()
-                        should_create_alert = True
+                    logger.info(f"Saved violation detection for camera {camera_id}: {results.get('violation_type')}")
 
-                        # Check cooldown
-                        if last_violation_time:
-                            time_diff = (current_time - last_violation_time).total_seconds()
-                            if time_diff < violation_cooldown:
-                                should_create_alert = False
+                    # Update last save time
+                    last_detection_save_time = current_time
 
-                        if should_create_alert:
-                            alert = Alert(
-                                detection_event_id=detection_event.id,
-                                severity=AlertSeverity.HIGH,
-                                message=f"PPE Violation detected at {camera.location}: {results.get('violation_type', 'Safety violation')}"
-                            )
-                            db.add(alert)
-                            db.commit()
-                            last_violation_time = current_time
+                    # Create immediate alert for violation
+                    alert = Alert(
+                        detection_event_id=detection_event.id,
+                        track_id=None,  # No longer using track_id
+                        severity=AlertSeverity.HIGH,
+                        message=f"PPE Violation detected at {camera.location}: {results.get('violation_type', 'Safety violation')}"
+                    )
+                    db.add(alert)
+                    db.commit()
+                    logger.info(f"Created alert for violation at camera {camera_id}")
 
-                            # Send alert notification to clients
-                            alert_message = {
-                                'type': 'alert',
-                                'camera_id': camera_id,
-                                'alert': {
-                                    'id': alert.id,
-                                    'severity': alert.severity.value,
-                                    'message': alert.message,
-                                    'timestamp': alert.created_at.isoformat()
-                                }
-                            }
-                            await manager.broadcast(camera_id, alert_message)
+                    # Send immediate alert notification
+                    alert_message = {
+                        'type': 'alert',
+                        'camera_id': camera_id,
+                        'alert': {
+                            'id': alert.id,
+                            'severity': alert.severity.value,
+                            'message': alert.message,
+                            'timestamp': alert.created_at.isoformat()
+                        }
+                    }
+                    await manager.broadcast(camera_id, alert_message)
 
                 except SQLAlchemyError as e:
                     logger.error(f"Database error saving detection for camera {camera_id}: {e}", exc_info=True)
                     db.rollback()
-                    # Continue processing, don't break the stream
                 except Exception as e:
                     logger.error(f"Unexpected error saving detection for camera {camera_id}: {e}", exc_info=True)
                     db.rollback()
-                    # Continue processing, don't break the stream
+
+            # If partial detection, log it
+            if is_partial and results.get('person_detected', False):
+                logger.debug(f"Partial detection at camera {camera_id}: {partial_reason}")
 
             frame_count += 1
 

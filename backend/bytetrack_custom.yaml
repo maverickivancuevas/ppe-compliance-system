@@ -1,0 +1,12 @@
+# Custom ByteTrack configuration for PPE Compliance System
+# Optimized for multiple workers with faster track ID expiration
+
+tracker_type: bytetrack  # tracker type, ['botsort', 'bytetrack']
+track_high_thresh: 0.5  # threshold for the first association
+track_low_thresh: 0.1  # threshold for the second association
+new_track_thresh: 0.6  # threshold for init new track if the detection does not match any tracks
+track_buffer: 15  # CUSTOM: Reduced from 30 to 15 frames (~0.5 seconds at 30 FPS)
+                  # Track IDs expire faster when person leaves frame
+                  # Optimal for multiple workers and 10-second violation timer
+match_thresh: 0.8  # threshold for matching tracks
+fuse_score: True  # use fuse score for matching (required by updated ultralytics)

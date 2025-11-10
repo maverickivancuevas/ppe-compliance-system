@@ -27,7 +27,7 @@ export default function DetectionHistoryPage() {
     camera_id: '',
     start_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     end_date: new Date().toISOString().split('T')[0],
-    violations_only: false,
+    status: 'all', // 'all', 'violations', 'compliant'
   });
   const [search, setSearch] = useState('');
 
@@ -35,6 +35,11 @@ export default function DetectionHistoryPage() {
     loadCameras();
     loadDetections();
   }, []);
+
+  // Auto-reload when filters change
+  useEffect(() => {
+    loadDetections();
+  }, [filters]);
 
   const loadCameras = async () => {
     try {
@@ -51,11 +56,18 @@ export default function DetectionHistoryPage() {
       const params: any = {
         start_date: filters.start_date,
         end_date: filters.end_date,
-        violations_only: filters.violations_only,
       };
 
+      // Add camera filter if specified
       if (filters.camera_id) {
         params.camera_id = filters.camera_id;
+      }
+
+      // Add status filter
+      if (filters.status === 'violations') {
+        params.violations_only = true;
+      } else if (filters.status === 'compliant') {
+        params.compliant_only = true;
       }
 
       const data = await detectionsAPI.getAll(params);
@@ -120,7 +132,8 @@ export default function DetectionHistoryPage() {
                   onChange={(e) =>
                     setFilters({ ...filters, start_date: e.target.value })
                   }
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-white"
+                  style={{ colorScheme: 'dark' }}
                 />
               </div>
 
@@ -132,7 +145,8 @@ export default function DetectionHistoryPage() {
                   onChange={(e) =>
                     setFilters({ ...filters, end_date: e.target.value })
                   }
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-white"
+                  style={{ colorScheme: 'dark' }}
                 />
               </div>
 
@@ -143,7 +157,7 @@ export default function DetectionHistoryPage() {
                   onChange={(e) =>
                     setFilters({ ...filters, camera_id: e.target.value })
                   }
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-white"
                 >
                   <option value="">All Cameras</option>
                   {cameras.map((camera) => (
@@ -157,26 +171,23 @@ export default function DetectionHistoryPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Status</label>
                 <select
-                  value={filters.violations_only ? 'violations' : 'all'}
+                  value={filters.status}
                   onChange={(e) =>
                     setFilters({
                       ...filters,
-                      violations_only: e.target.value === 'violations',
+                      status: e.target.value,
                     })
                   }
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-white"
                 >
                   <option value="all">All Detections</option>
                   <option value="violations">Violations Only</option>
+                  <option value="compliant">Compliant Only</option>
                 </select>
               </div>
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={loadDetections}>
-                <Filter className="h-4 w-4 mr-2" />
-                Apply Filters
-              </Button>
               <Button
                 variant="outline"
                 onClick={() => {
@@ -186,7 +197,7 @@ export default function DetectionHistoryPage() {
                       .toISOString()
                       .split('T')[0],
                     end_date: new Date().toISOString().split('T')[0],
-                    violations_only: false,
+                    status: 'all',
                   });
                 }}
               >

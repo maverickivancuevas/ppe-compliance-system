@@ -4,6 +4,7 @@ from datetime import datetime
 import uuid
 import enum
 from ..core.database import Base
+from ..core.timezone import get_philippine_time_naive
 
 
 class AlertSeverity(str, enum.Enum):
@@ -17,12 +18,13 @@ class Alert(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     detection_event_id = Column(String, ForeignKey("detection_events.id", ondelete="CASCADE"), nullable=False, index=True)
+    track_id = Column(String, nullable=True, index=True)  # Track ID from YOLO tracking (for deduplication)
     severity = Column(Enum(AlertSeverity), default=AlertSeverity.MEDIUM, nullable=False)
     message = Column(Text, nullable=False)
     acknowledged = Column(Boolean, default=False, nullable=False)
     acknowledged_by = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     acknowledged_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    created_at = Column(DateTime, default=get_philippine_time_naive, nullable=False, index=True)
 
     # Relationships
     detection_event = relationship("DetectionEvent", back_populates="alerts")

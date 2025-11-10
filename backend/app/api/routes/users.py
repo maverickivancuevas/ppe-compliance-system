@@ -59,7 +59,7 @@ def create_user(
         full_name=user_data.full_name,
         hashed_password=get_password_hash(user_data.password),
         role=user_data.role,
-        is_active="true"
+        is_active=True
     )
 
     db.add(new_user)
@@ -106,7 +106,7 @@ def update_user(
         user.role = user_data.role
 
     if user_data.is_active is not None:
-        user.is_active = "true" if user_data.is_active else "false"
+        user.is_active = user_data.is_active
 
     db.commit()
     db.refresh(user)

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Sidebar } from '@/components/layout/Sidebar';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { AlertCircle, CheckCircle, Bell, BellOff } from 'lucide-react';
+import { AlertCircle, CheckCircle, Bell, BellOff, Trash2 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { alertsAPI } from '@/lib/api';
 
@@ -74,6 +74,30 @@ export default function ActiveAlertsPage() {
     }
   };
 
+  const handleDelete = async (alertId: string) => {
+    if (!confirm('Are you sure you want to delete this alert?')) {
+      return;
+    }
+    try {
+      await alertsAPI.delete(alertId);
+      loadAlerts();
+    } catch (error) {
+      console.error('Failed to delete alert:', error);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!confirm('Are you sure you want to delete ALL alerts? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      await alertsAPI.deleteAll();
+      loadAlerts();
+    } catch (error) {
+      console.error('Failed to delete all alerts:', error);
+    }
+  };
+
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'high':
@@ -90,30 +114,37 @@ export default function ActiveAlertsPage() {
   const unacknowledgedCount = alerts.filter((a) => !a.acknowledged).length;
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <Sidebar />
-
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <header className="border-b border-border bg-card">
-          <div className="px-6 py-4 flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Active Alerts</h1>
-              <p className="text-sm text-muted-foreground">Real-time safety violation alerts and notifications</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                {unacknowledgedCount} unacknowledged
-              </span>
-              <div className="h-8 w-8 rounded-full bg-red-500/10 flex items-center justify-center">
-                <Bell className="h-4 w-4 text-red-500" />
-              </div>
-            </div>
+    <DashboardLayout>
+      {/* Header */}
+      <header className="border-b border-border bg-card">
+        <div className="px-6 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Active Alerts</h1>
+            <p className="text-sm text-muted-foreground">Real-time safety violation alerts and notifications</p>
           </div>
-        </header>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-muted-foreground">
+              {unacknowledgedCount} unacknowledged
+            </span>
+            <div className="h-8 w-8 rounded-full bg-red-500/10 flex items-center justify-center">
+              <Bell className="h-4 w-4 text-red-500" />
+            </div>
+            {alerts.length > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDeleteAll}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete All
+              </Button>
+            )}
+          </div>
+        </div>
+      </header>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-6 space-y-6">
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Filter Bar */}
           <Card className="p-4">
             <div className="flex flex-wrap items-center gap-4">
@@ -239,14 +270,23 @@ export default function ActiveAlertsPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {!alert.acknowledged && (
+                        <div className="flex items-center justify-end gap-2">
+                          {!alert.acknowledged && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleAcknowledge(alert.id)}
+                            >
+                              Acknowledge
+                            </Button>
+                          )}
                           <Button
                             size="sm"
-                            onClick={() => handleAcknowledge(alert.id)}
+                            variant="destructive"
+                            onClick={() => handleDelete(alert.id)}
                           >
-                            Acknowledge
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                        )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -291,8 +331,7 @@ export default function ActiveAlertsPage() {
               </div>
             </Card>
           </div>
-        </main>
-      </div>
-    </div>
+      </main>
+    </DashboardLayout>
   );
 }

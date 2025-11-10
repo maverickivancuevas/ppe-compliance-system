@@ -36,12 +36,24 @@ class Settings(BaseSettings):
     CONFIDENCE_THRESHOLD: float = 0.50
 
     # YOLO Model
-    MODEL_PATH: str = "../../SMART SAFETY PROJECT/TRAINED MODEL RESULT/weights/best.pt"
+    MODEL_PATH: str = "best.pt"  # YOLOv8s model in backend directory
 
     # Default Admin User (loaded from environment)
     DEFAULT_ADMIN_EMAIL: str = "admin@example.com"
     DEFAULT_ADMIN_PASSWORD: str = "admin123"
     DEFAULT_ADMIN_NAME: str = "System Administrator"
+
+    # Email/SMTP Settings
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""  # Set via environment variable
+    SMTP_PASSWORD: str = ""  # Set via environment variable
+    SMTP_FROM_EMAIL: str = "noreply@ppecompliance.com"
+    SMTP_FROM_NAME: str = "PPE Compliance System"
+    EMAIL_ENABLED: bool = False  # Enable when SMTP credentials are configured
+
+    # Email notification recipients (comma-separated)
+    ADMIN_EMAIL_RECIPIENTS: str = "admin@example.com"
 
     class Config:
         env_file = ".env"
@@ -50,6 +62,10 @@ class Settings(BaseSettings):
     def get_allowed_origins(self) -> List[str]:
         """Parse comma-separated CORS origins"""
         return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",")]
+
+    def get_admin_email_recipients(self) -> List[str]:
+        """Parse comma-separated admin email recipients"""
+        return [email.strip() for email in self.ADMIN_EMAIL_RECIPIENTS.split(",") if email.strip()]
 
     def ensure_directories(self):
         """Create necessary directories if they don't exist"""

@@ -6,6 +6,7 @@ from datetime import datetime
 
 from ..core.database import get_db
 from ..core.security import get_current_user
+from ..core.timezone import get_philippine_time_naive
 from ..models.user import User
 from ..models.alert import Alert, AlertSeverity
 from ..models.detection import DetectionEvent
@@ -89,12 +90,44 @@ def acknowledge_alert(
 
     alert.acknowledged = True
     alert.acknowledged_by = current_user.id
-    alert.acknowledged_at = datetime.utcnow()
+    alert.acknowledged_at = get_philippine_time_naive()
 
     db.commit()
     db.refresh(alert)
 
     return {"message": "Alert acknowledged", "alert_id": alert_id}
+
+
+@router.delete("/all")
+def delete_all_alerts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Delete all alerts"""
+
+    count = db.query(Alert).count()
+    db.query(Alert).delete()
+    db.commit()
+
+    return {"message": f"Deleted {count} alerts", "count": count}
+
+
+@router.delete("/{alert_id}")
+def delete_alert(
+    alert_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Delete an alert"""
+
+    alert = db.query(Alert).filter(Alert.id == alert_id).first()
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    db.delete(alert)
+    db.commit()
+
+    return {"message": "Alert deleted", "alert_id": alert_id}
 
 
 @router.get("/stats")

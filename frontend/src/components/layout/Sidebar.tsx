@@ -20,9 +20,17 @@ import {
   LogOut,
   ChevronDown,
   ChevronRight,
+  HardHat,
+  UserPlus,
+  List,
+  UserCircle,
+  QrCode,
+  ScanLine,
+  TrendingUp,
+  Image,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface NavItem {
   title: string;
@@ -87,6 +95,42 @@ const managerNavItems: NavItem[] = [
     icon: <AlertCircle className="h-5 w-5" />,
   },
   {
+    title: 'Captured Records',
+    href: '/safety-manager/captured-records',
+    icon: <Image className="h-5 w-5" />,
+  },
+  {
+    title: 'Construction Workers',
+    icon: <HardHat className="h-5 w-5" />,
+    children: [
+      {
+        title: 'Add Worker',
+        href: '/safety-manager/workers/add',
+        icon: <UserPlus className="h-4 w-4" />,
+      },
+      {
+        title: 'Worker List',
+        href: '/safety-manager/workers',
+        icon: <List className="h-4 w-4" />,
+      },
+      {
+        title: 'QR Code Management',
+        href: '/safety-manager/workers/qr-codes',
+        icon: <QrCode className="h-4 w-4" />,
+      },
+      {
+        title: 'Scan QR',
+        href: '/safety-manager/workers/scan',
+        icon: <ScanLine className="h-4 w-4" />,
+      },
+      {
+        title: 'Performance Metrics',
+        href: '/safety-manager/workers/metrics',
+        icon: <TrendingUp className="h-4 w-4" />,
+      },
+    ],
+  },
+  {
     title: 'Analytics',
     href: '/safety-manager/analytics',
     icon: <BarChart3 className="h-5 w-5" />,
@@ -119,6 +163,25 @@ export function Sidebar() {
   if (!user) return null;
 
   const navItems = user.role === 'admin' ? adminNavItems : managerNavItems;
+
+  // Automatically open parent menus based on current pathname
+  useEffect(() => {
+    const newOpenMenus: Record<string, boolean> = {};
+
+    navItems.forEach((item) => {
+      if (item.children) {
+        // Check if any child's href matches the current pathname
+        const hasActiveChild = item.children.some(
+          (child) => child.href && pathname.startsWith(child.href)
+        );
+        if (hasActiveChild) {
+          newOpenMenus[item.title] = true;
+        }
+      }
+    });
+
+    setOpenMenus(newOpenMenus);
+  }, [pathname, navItems]);
 
   const toggleMenu = (title: string) => {
     setOpenMenus(prev => ({
@@ -166,7 +229,7 @@ export function Sidebar() {
                       <ChevronRight className="h-4 w-4" />
                     )}
                   </button>
-                  {isOpen && (
+                  {isOpen && item.children && (
                     <div className="ml-4 mt-1 space-y-1">
                       {item.children.map((child) => {
                         const isChildActive = pathname === child.href;
@@ -192,32 +255,7 @@ export function Sidebar() {
               );
             }
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href!}
-                className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                )}
-              >
-                {item.icon}
-                <span>{item.title}</span>
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* Shared Items */}
-        <div className="mt-6 space-y-1 border-t pt-4">
-          <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-            General
-          </p>
-          {sharedNavItems.map((item) => {
-            const isActive = pathname === item.href;
-            return (
+            return item.href ? (
               <Link
                 key={item.href}
                 href={item.href}
@@ -231,7 +269,32 @@ export function Sidebar() {
                 {item.icon}
                 <span>{item.title}</span>
               </Link>
-            );
+            ) : null;
+          })}
+        </div>
+
+        {/* Shared Items */}
+        <div className="mt-6 space-y-1 border-t pt-4">
+          <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            General
+          </p>
+          {sharedNavItems.map((item) => {
+            const isActive = pathname === item.href;
+            return item.href ? (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                )}
+              >
+                {item.icon}
+                <span>{item.title}</span>
+              </Link>
+            ) : null;
           })}
         </div>
       </nav>

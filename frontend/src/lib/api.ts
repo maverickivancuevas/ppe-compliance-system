@@ -156,6 +156,178 @@ export const alertsAPI = {
     const response = await api.put(`/alerts/${id}/acknowledge`);
     return response.data;
   },
+
+  delete: async (id: string) => {
+    const response = await api.delete(`/alerts/${id}`);
+    return response.data;
+  },
+
+  deleteAll: async () => {
+    const response = await api.delete('/alerts/all');
+    return response.data;
+  },
+};
+
+// Incidents
+export const incidentsAPI = {
+  getAll: async (params?: any) => {
+    const response = await api.get('/incidents/', { params });
+    return response.data;
+  },
+
+  getById: async (id: string) => {
+    const response = await api.get(`/incidents/${id}`);
+    return response.data;
+  },
+
+  create: async (data: any) => {
+    const response = await api.post('/incidents/', data);
+    return response.data;
+  },
+
+  update: async (id: string, data: any) => {
+    const response = await api.put(`/incidents/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: string) => {
+    await api.delete(`/incidents/${id}`);
+  },
+
+  getStats: async () => {
+    const response = await api.get('/incidents/stats/summary');
+    return response.data;
+  },
+};
+
+// Reports
+export const reportsAPI = {
+  generate: async (data: any) => {
+    const response = await api.post('/reports/generate', data, {
+      responseType: 'blob'
+    });
+    return response;
+  },
+
+  generateQuick: async (reportType: string, format: string) => {
+    const response = await api.get(`/reports/quick/${reportType}`, {
+      params: { format },
+      responseType: 'blob'
+    });
+    return response;
+  },
+
+  downloadTemplate: async (templateType: string) => {
+    const response = await api.get(`/reports/template/${templateType}`, {
+      responseType: 'blob'
+    });
+    return response;
+  },
+};
+
+// Analytics
+export const analyticsAPI = {
+  getComplianceTrend: async (params?: any) => {
+    const response = await api.get('/analytics/compliance-trend', { params });
+    return response.data;
+  },
+
+  getViolationsByCamera: async (params?: any) => {
+    const response = await api.get('/analytics/violations-by-camera', { params });
+    return response.data;
+  },
+
+  getViolationTypes: async (params?: any) => {
+    const response = await api.get('/analytics/violation-types', { params });
+    return response.data;
+  },
+
+  getSummary: async (params?: any) => {
+    const response = await api.get('/analytics/summary', { params });
+    return response.data;
+  },
+
+  getHeatmap: async (params?: any) => {
+    const response = await api.get('/analytics/heatmap', { params });
+    return response.data;
+  },
+
+  getShiftAnalytics: async (params?: any) => {
+    const response = await api.get('/analytics/shift-analytics', { params });
+    return response.data;
+  },
+};
+
+// Workers
+export const workersAPI = {
+  getAll: async (params?: any) => {
+    const response = await api.get('/workers/', { params });
+    return response.data;
+  },
+
+  getById: async (id: string) => {
+    const response = await api.get(`/workers/${id}`);
+    return response.data;
+  },
+
+  getByAccountNumber: async (accountNumber: string) => {
+    const response = await api.get(`/workers/account/${accountNumber}`);
+    return response.data;
+  },
+
+  create: async (data: any) => {
+    const response = await api.post('/workers/', data);
+    return response.data;
+  },
+
+  update: async (id: string, data: any) => {
+    const response = await api.put(`/workers/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: string) => {
+    await api.delete(`/workers/${id}`);
+  },
+
+  downloadQR: async (id: string) => {
+    const response = await api.get(`/workers/${id}/qr`, {
+      responseType: 'blob'
+    });
+    return response;
+  },
+
+  getStats: async () => {
+    const response = await api.get('/workers/stats/summary');
+    return response.data;
+  },
+};
+
+// Attendance
+export const attendanceAPI = {
+  checkIn: async (data: any) => {
+    const response = await api.post('/attendance/check-in', data);
+    return response.data;
+  },
+
+  checkOut: async (data: any) => {
+    const response = await api.post('/attendance/check-out', data);
+    return response.data;
+  },
+
+  getAll: async (params?: any) => {
+    const response = await api.get('/attendance/', { params });
+    return response.data;
+  },
+
+  getToday: async () => {
+    const response = await api.get('/attendance/today');
+    return response.data;
+  },
+
+  getWorkerStats: async (workerId: string) => {
+    const response = await api.get(`/attendance/stats/worker/${workerId}`);
+    return response.data;
+  },
 };
 
 export default api;

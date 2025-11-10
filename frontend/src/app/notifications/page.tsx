@@ -17,40 +17,7 @@ interface Notification {
 }
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      type: 'alert',
-      title: 'New Violation Detected',
-      message: 'Worker without hardhat detected at Main Entrance camera',
-      timestamp: new Date(Date.now() - 5 * 60000).toISOString(),
-      read: false,
-    },
-    {
-      id: '2',
-      type: 'alert',
-      title: 'Multiple Violations',
-      message: '3 violations detected in the last hour at Loading Dock',
-      timestamp: new Date(Date.now() - 30 * 60000).toISOString(),
-      read: false,
-    },
-    {
-      id: '3',
-      type: 'success',
-      title: 'Compliance Target Met',
-      message: 'Daily compliance rate reached 95% - Great job!',
-      timestamp: new Date(Date.now() - 2 * 60 * 60000).toISOString(),
-      read: true,
-    },
-    {
-      id: '4',
-      type: 'info',
-      title: 'Weekly Report Ready',
-      message: 'Your weekly compliance report is ready to download',
-      timestamp: new Date(Date.now() - 24 * 60 * 60000).toISOString(),
-      read: true,
-    },
-  ]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
