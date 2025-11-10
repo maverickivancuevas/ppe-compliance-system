@@ -32,6 +32,10 @@ import { Play, Square, AlertCircle, CheckCircle2, Video, Camera as CameraIcon, F
 import { useToast } from '@/hooks/use-toast';
 import { soundAlertManager } from '@/lib/soundAlerts';
 
+// Get API URL from environment variable
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || (API_URL.startsWith('https') ? API_URL.replace('https', 'wss') : API_URL.replace('http', 'ws'));
+
 type IncidentSeverity = 'critical' | 'high' | 'medium' | 'low';
 
 interface CameraFeed {
@@ -171,8 +175,7 @@ export default function MultiCameraMonitorPage() {
     const feed = cameraFeeds.get(cameraId);
     if (!feed) return;
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.hostname}:8000/ws/monitor/${cameraId}`;
+    const wsUrl = `${WS_URL}/ws/monitor/${cameraId}`;
 
     try {
       const ws = new WebSocket(wsUrl);
@@ -654,7 +657,9 @@ export default function MultiCameraMonitorPage() {
     if (!incident.screenshot_url) return;
 
     try {
-      const url = `http://localhost:8000${incident.screenshot_url}`;
+      const url = incident.screenshot_url.startsWith('http')
+        ? incident.screenshot_url
+        : `${API_URL}${incident.screenshot_url}`;
       const response = await fetch(url);
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
@@ -1140,7 +1145,9 @@ export default function MultiCameraMonitorPage() {
                                     {incident.screenshot_url && (
                                       <div className="relative">
                                         <img
-                                          src={`http://localhost:8000${incident.screenshot_url}`}
+                                          src={incident.screenshot_url.startsWith('http')
+                                            ? incident.screenshot_url
+                                            : `${API_URL}${incident.screenshot_url}`}
                                           alt="Incident screenshot"
                                           className="w-full h-32 object-cover rounded"
                                         />

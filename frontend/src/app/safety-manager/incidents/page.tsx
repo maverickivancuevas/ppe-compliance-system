@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { incidentsAPI } from '@/lib/api';
+
+// Get API URL from environment variable
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -543,7 +546,9 @@ export default function IncidentsPage() {
             <div className="mt-4">
               {selectedIncident.screenshot_url && (
                 <img
-                  src={`http://localhost:8000${selectedIncident.screenshot_url}`}
+                  src={selectedIncident.screenshot_url.startsWith('http')
+                    ? selectedIncident.screenshot_url
+                    : `${API_URL}${selectedIncident.screenshot_url}`}
                   alt="Incident screenshot"
                   className="w-full rounded-lg"
                 />

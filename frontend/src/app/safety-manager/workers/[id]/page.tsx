@@ -35,6 +35,9 @@ import { formatDate } from '@/lib/utils';
 import { workersAPI, attendanceAPI } from '@/lib/api';
 import Image from 'next/image';
 
+// Get API URL from environment variable
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface Camera {
   id: string;
   name: string;
@@ -433,7 +436,9 @@ export default function WorkerDetailPage() {
                   {worker.qr_code_url ? (
                     <div className="bg-white p-4 rounded-lg border-2 border-dashed">
                       <img
-                        src={`http://localhost:8000${worker.qr_code_url}`}
+                        src={worker.qr_code_url.startsWith('http')
+                          ? worker.qr_code_url
+                          : `${API_URL}${worker.qr_code_url}`}
                         alt={`QR Code for ${worker.account_number}`}
                         className="w-full h-auto"
                       />
