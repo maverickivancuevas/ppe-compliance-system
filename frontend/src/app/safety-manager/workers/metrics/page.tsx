@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -42,7 +42,7 @@ interface WorkerMetrics {
   days_this_month: number;
 }
 
-export default function PerformanceMetricsPage() {
+function PerformanceMetricsContent() {
   const searchParams = useSearchParams();
   const preselectedWorkerId = searchParams.get('worker');
 
@@ -373,5 +373,19 @@ export default function PerformanceMetricsPage() {
           )}
       </main>
     </DashboardLayout>
+  );
+}
+
+export default function PerformanceMetricsPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    }>
+      <PerformanceMetricsContent />
+    </Suspense>
   );
 }
