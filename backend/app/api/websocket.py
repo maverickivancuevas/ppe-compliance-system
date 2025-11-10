@@ -105,7 +105,10 @@ async def process_camera_stream(
     from ..core.database import SessionLocal
     db = SessionLocal()
 
+    cap = None
     try:
+        logger.info(f"process_camera_stream started for camera {camera_id}")
+
         # Send status update: Loading model
         await manager.broadcast(camera_id, {
             'type': 'status',
@@ -113,6 +116,7 @@ async def process_camera_stream(
         })
 
         yolo_service = get_yolo_service()
+        logger.info(f"YOLO service loaded for camera {camera_id}")
 
         # Send status update: Opening camera
         await manager.broadcast(camera_id, {
@@ -277,10 +281,28 @@ async def process_camera_stream(
             # Small delay to control frame rate
             await asyncio.sleep(0.03)  # ~30 FPS
 
+    except Exception as e:
+        logger.error(f"Critical error in process_camera_stream for camera {camera_id}: {e}", exc_info=True)
+        try:
+            await manager.broadcast(camera_id, {
+                'type': 'error',
+                'message': f'Streaming error: {str(e)}'
+            })
+        except:
+            pass
     finally:
+        logger.info(f"Cleaning up resources for camera {camera_id}")
         if cap is not None:
-            cap.release()
-        db.close()  # Close the database session
+            try:
+                cap.release()
+                logger.info(f"Released video capture for camera {camera_id}")
+            except Exception as e:
+                logger.error(f"Error releasing video capture: {e}")
+        try:
+            db.close()  # Close the database session
+            logger.info(f"Closed database session for camera {camera_id}")
+        except Exception as e:
+            logger.error(f"Error closing database: {e}")
         # Clean up stream tracking to prevent memory leak
         if camera_id in manager.active_streams:
             del manager.active_streams[camera_id]
@@ -289,23 +311,37 @@ async def process_camera_stream(
 
 async def start_stream_handler(camera_id: str, websocket: WebSocket, db: Session):
     """Handle streaming for a specific camera"""
-    # Get camera
-    camera = db.query(Camera).filter(Camera.id == camera_id).first()
-    if not camera:
-        await websocket.send_json({'type': 'error', 'message': 'Camera not found'})
-        return
-
-    # Check if stream is already active
-    if camera_id not in manager.active_connections or len(manager.active_connections[camera_id]) == 1:
-        # Start processing stream (creates its own DB session)
-        asyncio.create_task(process_camera_stream(camera_id, camera))
-
     try:
+        # Get camera
+        camera = db.query(Camera).filter(Camera.id == camera_id).first()
+        if not camera:
+            await websocket.send_json({'type': 'error', 'message': 'Camera not found'})
+            return
+
+        logger.info(f"Starting stream for camera {camera_id}: {camera.name} ({camera.stream_url})")
+
+        # Check if stream is already active
+        if camera_id not in manager.active_connections or len(manager.active_connections[camera_id]) == 1:
+            # Start processing stream (creates its own DB session)
+            asyncio.create_task(process_camera_stream(camera_id, camera))
+            logger.info(f"Created processing task for camera {camera_id}")
+
         # Keep connection alive
         while True:
-            data = await websocket.receive_text()
-            # Handle client commands if needed
-            if data == "ping":
-                await websocket.send_json({'type': 'pong'})
-    except WebSocketDisconnect:
-        pass
+            try:
+                data = await websocket.receive_text()
+                # Handle client commands if needed
+                if data == "ping":
+                    await websocket.send_json({'type': 'pong'})
+            except WebSocketDisconnect:
+                logger.info(f"WebSocket disconnected for camera {camera_id}")
+                break
+            except Exception as e:
+                logger.error(f"Error in websocket receive for camera {camera_id}: {e}", exc_info=True)
+                break
+    except Exception as e:
+        logger.error(f"Error in start_stream_handler for camera {camera_id}: {e}", exc_info=True)
+        try:
+            await websocket.send_json({'type': 'error', 'message': f'Stream error: {str(e)}'})
+        except:
+            pass
