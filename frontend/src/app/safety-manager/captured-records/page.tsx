@@ -248,7 +248,7 @@ export default function CapturedRecordsPage() {
                   <div className="relative aspect-video bg-muted">
                     <img
                       src={record.image_url}
-                      alt={record.type === 'detection' ? 'Detection snapshot' : 'Incident screenshot'}
+                      alt="Detection snapshot"
                       className="w-full h-full object-cover cursor-pointer"
                       onClick={() => setSelectedImage(record.image_url)}
                       onError={(e) => {
@@ -268,20 +268,13 @@ export default function CapturedRecordsPage() {
                             : 'bg-purple-500/10 text-purple-500 border-purple-500/20'
                         }`}
                       >
-                        {record.type === 'detection' ? (
-                          <>
-                            <Camera className="h-3 w-3 inline mr-1" />
-                            Detection
-                          </>
-                        ) : (
-                          <>
-                            <FileText className="h-3 w-3 inline mr-1" />
-                            Incident
-                          </>
-                        )}
+                        <>
+                          <Camera className="h-3 w-3 inline mr-1" />
+                          Detection
+                        </>
                       </span>
                     </div>
-                    {record.type === 'detection' && record.is_compliant !== undefined && (
+                    {record.is_compliant !== undefined && (
                       <div className="absolute top-2 right-2">
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-medium border ${
@@ -305,11 +298,8 @@ export default function CapturedRecordsPage() {
                       <p className="text-sm font-medium">{record.camera_name}</p>
                       <p className="text-xs text-muted-foreground">{record.camera_location}</p>
                     </div>
-                    {record.type === 'detection' && record.violation_type && (
+                    {record.violation_type && (
                       <p className="text-xs text-red-500">{record.violation_type}</p>
-                    )}
-                    {record.type === 'incident' && record.title && (
-                      <p className="text-xs font-medium">{record.title}</p>
                     )}
                     <div className="flex gap-2 pt-2">
                       <Button
