@@ -155,6 +155,10 @@ def check_out_worker(
     time_diff = check_out_time - attendance.check_in_time
     attendance.hours_worked = int(time_diff.total_seconds() / 60)
 
+    # Clear worker's assigned camera when checking out
+    worker.camera_id = None
+    worker.updated_at = get_philippine_time_naive()
+
     db.commit()
     db.refresh(attendance)
 

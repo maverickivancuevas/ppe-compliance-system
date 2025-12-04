@@ -551,25 +551,28 @@ export default function ScanQRPage() {
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-4">
-                      {/* Site */}
-                      <div className="space-y-2">
-                        <Label htmlFor="location">
-                          Site <span className="text-muted-foreground text-xs">(Optional)</span>
-                        </Label>
-                        <select
-                          id="location"
-                          value={location}
-                          onChange={(e) => setLocation(e.target.value)}
-                          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
-                        >
-                          <option value="">Select site...</option>
-                          {cameras && cameras.map((camera) => (
-                            <option key={camera.id} value={camera.name}>
-                              {camera.name} - {camera.location}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      {/* Site (only for check-in) */}
+                      {action === 'check-in' && (
+                        <div className="space-y-2">
+                          <Label htmlFor="location">
+                            Site <span className="text-red-500">*</span>
+                          </Label>
+                          <select
+                            id="location"
+                            value={location}
+                            onChange={(e) => setLocation(e.target.value)}
+                            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                            required
+                          >
+                            <option value="">Select site...</option>
+                            {cameras && cameras.map((camera) => (
+                              <option key={camera.id} value={camera.name}>
+                                {camera.name} - {camera.location}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
 
                       {/* Notes (only for check-out) */}
                       {action === 'check-out' && (

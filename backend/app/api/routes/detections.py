@@ -7,6 +7,7 @@ import json
 from ...core.database import get_db
 from ...core.security import get_safety_manager_or_admin
 from ...core.timezone import get_philippine_time_naive
+from ...core.detection_utils import calculate_violation_type
 from ...models.user import User
 from ...models.detection import DetectionEvent
 from ...models.camera import Camera
@@ -45,6 +46,19 @@ def create_manual_detection(
             detail="Camera not found"
         )
 
+    # Calculate violation type if not provided
+    calculated_violation_type = calculate_violation_type(
+        person_detected=detection.person_detected,
+        hardhat_detected=detection.hardhat_detected,
+        no_hardhat_detected=detection.no_hardhat_detected,
+        safety_vest_detected=detection.safety_vest_detected,
+        no_safety_vest_detected=detection.no_safety_vest_detected,
+        is_compliant=detection.is_compliant
+    )
+
+    # Use calculated violation type if not explicitly provided
+    final_violation_type = detection.violation_type or calculated_violation_type
+
     # Create detection event
     detection_event = DetectionEvent(
         camera_id=detection.camera_id,
@@ -54,7 +68,7 @@ def create_manual_detection(
         safety_vest_detected=detection.safety_vest_detected,
         no_safety_vest_detected=detection.no_safety_vest_detected,
         is_compliant=detection.is_compliant,
-        violation_type=detection.violation_type,
+        violation_type=final_violation_type,
         confidence_scores=json.dumps(detection.confidence_scores),
         timestamp=get_philippine_time_naive()
     )
@@ -66,15 +80,15 @@ def create_manual_detection(
     if not detection.is_compliant and detection.person_detected:
         # Determine severity based on violation type
         severity = AlertSeverity.HIGH
-        if detection.violation_type:
-            if "hardhat" in detection.violation_type.lower():
+        if final_violation_type:
+            if "both" in final_violation_type.lower():
                 severity = AlertSeverity.HIGH
-            elif "vest" in detection.violation_type.lower():
+            elif "hardhat" in final_violation_type.lower():
+                severity = AlertSeverity.HIGH
+            elif "vest" in final_violation_type.lower():
                 severity = AlertSeverity.MEDIUM
 
-        alert_message = f"PPE Violation detected at {camera.name}"
-        if detection.violation_type:
-            alert_message += f": {detection.violation_type}"
+        alert_message = f"PPE violation detected: {final_violation_type or 'Safety violation'} at {camera.name}"
 
         alert = Alert(
             detection_event_id=detection_event.id,
@@ -91,6 +105,7 @@ def create_manual_detection(
     return {
         "message": "Detection saved successfully",
         "detection_id": detection_event.id,
+        "violation_type": final_violation_type,
         "alert_created": not detection.is_compliant and detection.person_detected
     }
 
@@ -104,12 +119,21 @@ def get_all_detections(
     end_date: Optional[str] = Query(None),
     violations_only: bool = False,
     compliant_only: bool = False,
+    has_snapshot: bool = False,
+    include_archived: bool = Query(False, description="Include archived detections"),
+    archived_only: bool = Query(False, description="Show only archived detections"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_safety_manager_or_admin)
 ):
     """Get all detection events with optional filters"""
 
     query = db.query(DetectionEvent)
+
+    # Filter archived status
+    if archived_only:
+        query = query.filter(DetectionEvent.archived == True)
+    elif not include_archived:
+        query = query.filter(DetectionEvent.archived == False)
 
     # Apply filters
     if camera_id:
@@ -122,7 +146,6 @@ def get_all_detections(
     if end_date:
         end_dt = datetime.fromisoformat(end_date.replace('Z', ''))
         # Add 1 day to include all detections on end_date
-        # e.g., if end_date is 2025-10-26, we want to include detections until 2025-10-26 23:59:59
         end_dt = end_dt + timedelta(days=1)
         query = query.filter(DetectionEvent.timestamp < end_dt)
 
@@ -141,6 +164,9 @@ def get_all_detections(
                 DetectionEvent.person_detected == True
             )
         )
+
+    if has_snapshot:
+        query = query.filter(DetectionEvent.snapshot_url != None)
 
     # Order by timestamp descending (newest first)
     query = query.order_by(DetectionEvent.timestamp.desc())
@@ -192,7 +218,8 @@ def get_detection_stats(
         and_(
             DetectionEvent.timestamp >= start_date,
             DetectionEvent.timestamp <= end_date,
-            DetectionEvent.person_detected == True  # Only count when person is detected
+            DetectionEvent.person_detected == True,
+            DetectionEvent.archived == False  # Exclude archived detections
         )
     )
 
@@ -243,3 +270,47 @@ def delete_detection(
     db.commit()
 
     return None
+
+
+@router.post("/{detection_id}/clear-snapshot", status_code=status.HTTP_200_OK)
+def clear_detection_snapshot(
+    detection_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_safety_manager_or_admin)
+):
+    """Clear the snapshot URL from a detection event without deleting the detection"""
+
+    detection = db.query(DetectionEvent).filter(DetectionEvent.id == detection_id).first()
+    if not detection:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Detection event not found"
+        )
+
+    # Clear the snapshot URL but keep the detection event
+    detection.snapshot_url = None
+    db.commit()
+
+    return {"message": "Snapshot cleared successfully"}
+
+
+@router.post("/clear-all-snapshots", status_code=status.HTTP_200_OK)
+def clear_all_snapshots(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_safety_manager_or_admin)
+):
+    """Clear all snapshot URLs from detection events without deleting the detections"""
+
+    # Update all detection events that have snapshots
+    detections_with_snapshots = db.query(DetectionEvent).filter(
+        DetectionEvent.snapshot_url != None
+    ).all()
+
+    count = len(detections_with_snapshots)
+
+    for detection in detections_with_snapshots:
+        detection.snapshot_url = None
+
+    db.commit()
+
+    return {"message": f"Cleared {count} snapshots successfully", "count": count}

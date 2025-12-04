@@ -29,6 +29,7 @@ interface Worker {
 }
 
 export default function QRCodeManagementPage() {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [filteredWorkers, setFilteredWorkers] = useState<Worker[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -213,7 +214,7 @@ export default function QRCodeManagementPage() {
                     <div className="bg-white p-3 rounded-lg border-2 border-dashed">
                       {worker.qr_code_url ? (
                         <img
-                          src={`http://localhost:8000${worker.qr_code_url}`}
+                          src={`${API_URL}${worker.qr_code_url}`}
                           alt={`QR Code for ${worker.account_number}`}
                           className="w-full h-auto"
                         />
@@ -297,7 +298,7 @@ export default function QRCodeManagementPage() {
               )}
               <div className="bg-white p-6 border-4 border-black inline-block">
                 <img
-                  src={`http://localhost:8000${selectedWorker.qr_code_url}`}
+                  src={`${API_URL}${selectedWorker.qr_code_url}`}
                   alt={`QR Code for ${selectedWorker.account_number}`}
                   className="w-64 h-64"
                 />

@@ -6,22 +6,19 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Image as ImageIcon, Camera, FileText, Download, Eye, X } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
-import { detectionsAPI, incidentsAPI, camerasAPI } from '@/lib/api';
+import { detectionsAPI, camerasAPI } from '@/lib/api';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 interface CapturedRecord {
   id: string;
-  type: 'detection' | 'incident';
+  type: 'detection';
   timestamp: string;
   camera_id: string;
   camera_name: string;
   camera_location: string;
   image_url: string;
   violation_type?: string;
-  title?: string;
-  description?: string;
-  severity?: string;
   is_compliant?: boolean;
 }
 
@@ -37,7 +34,6 @@ export default function CapturedRecordsPage() {
   const [cameras, setCameras] = useState<CameraInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
-    type: 'all' as 'all' | 'detections' | 'incidents',
     camera_id: '',
   });
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -51,8 +47,10 @@ export default function CapturedRecordsPage() {
   }, []);
 
   useEffect(() => {
-    loadRecords();
-  }, [dateRange]);
+    if (cameras.length > 0) {
+      loadRecords();
+    }
+  }, [dateRange, cameras]);
 
   useEffect(() => {
     applyFilters();
@@ -70,52 +68,32 @@ export default function CapturedRecordsPage() {
   const loadRecords = async () => {
     setLoading(true);
     try {
-      const [detections, incidents] = await Promise.all([
-        detectionsAPI.getAll({
-          start_date: dateRange.start,
-          end_date: dateRange.end,
-          limit: 500,
-        }),
-        incidentsAPI.getAll({
-          start_date: dateRange.start,
-          end_date: dateRange.end,
-        }),
-      ]);
+      const detections = await detectionsAPI.getAll({
+        start_date: dateRange.start,
+        end_date: dateRange.end,
+        limit: 500,
+      });
 
       const detectionRecords: CapturedRecord[] = detections
         .filter((d: any) => d.snapshot_url)
-        .map((d: any) => ({
-          id: d.id,
-          type: 'detection' as const,
-          timestamp: d.timestamp,
-          camera_id: d.camera_id || '',
-          camera_name: d.camera?.name || 'Unknown',
-          camera_location: d.camera?.location || 'N/A',
-          image_url: d.snapshot_url.startsWith('http')
-            ? d.snapshot_url
-            : `${API_URL}${d.snapshot_url.startsWith('/') ? '' : '/'}${d.snapshot_url}`,
-          violation_type: d.violation_type,
-          is_compliant: d.is_compliant,
-        }));
+        .map((d: any) => {
+          const camera = cameras.find(c => c.id === d.camera_id);
+          return {
+            id: d.id,
+            type: 'detection' as const,
+            timestamp: d.timestamp,
+            camera_id: d.camera_id || '',
+            camera_name: camera?.name || 'Unknown',
+            camera_location: camera?.location || 'N/A',
+            image_url: d.snapshot_url.startsWith('http')
+              ? d.snapshot_url
+              : `${API_URL}${d.snapshot_url.startsWith('/') ? '' : '/'}${d.snapshot_url}`,
+            violation_type: d.violation_type,
+            is_compliant: d.is_compliant,
+          };
+        });
 
-      const incidentRecords: CapturedRecord[] = incidents
-        .filter((i: any) => i.screenshot_url)
-        .map((i: any) => ({
-          id: i.id,
-          type: 'incident' as const,
-          timestamp: i.incident_time,
-          camera_id: i.camera_id || '',
-          camera_name: i.camera?.name || 'Unknown',
-          camera_location: i.camera?.location || 'N/A',
-          image_url: i.screenshot_url.startsWith('http')
-            ? i.screenshot_url
-            : `${API_URL}${i.screenshot_url.startsWith('/') ? '' : '/'}${i.screenshot_url}`,
-          title: i.title,
-          description: i.description,
-          severity: i.severity,
-        }));
-
-      const allRecords = [...detectionRecords, ...incidentRecords].sort(
+      const allRecords = detectionRecords.sort(
         (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
 
@@ -129,13 +107,6 @@ export default function CapturedRecordsPage() {
 
   const applyFilters = () => {
     let filtered = records;
-
-    // Filter by type
-    if (filters.type === 'detections') {
-      filtered = filtered.filter(r => r.type === 'detection');
-    } else if (filters.type === 'incidents') {
-      filtered = filtered.filter(r => r.type === 'incident');
-    }
 
     // Filter by camera
     if (filters.camera_id) {
@@ -187,7 +158,7 @@ export default function CapturedRecordsPage() {
             <div>
               <h1 className="text-2xl font-bold">Captured Records</h1>
               <p className="text-sm text-muted-foreground">
-                All detection snapshots and incident screenshots
+                All detection snapshots with PPE violations
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -225,7 +196,7 @@ export default function CapturedRecordsPage() {
             </div>
 
             {/* Date Range & Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Start Date</label>
                 <input
@@ -261,19 +232,6 @@ export default function CapturedRecordsPage() {
                       {camera.name} - {camera.location}
                     </option>
                   ))}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Record Type</label>
-                <select
-                  value={filters.type}
-                  onChange={(e) => setFilters({ ...filters, type: e.target.value as any })}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-white"
-                >
-                  <option value="all">All Records</option>
-                  <option value="detections">Detection Snapshots</option>
-                  <option value="incidents">Incident Screenshots</option>
                 </select>
               </div>
             </div>

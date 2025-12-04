@@ -31,6 +31,7 @@ class DetectionEventResponse(DetectionEventBase):
     confidence_scores: Optional[Dict[str, float]] = None
     snapshot_url: Optional[str] = None
     violation_type: Optional[str] = None
+    worker_id: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -53,6 +54,7 @@ class DetectionEventResponse(DetectionEventBase):
             "confidence_scores": json.loads(obj.confidence_scores) if obj.confidence_scores else None,
             "snapshot_url": obj.snapshot_url,
             "violation_type": obj.violation_type,
+            "worker_id": obj.worker_id,
             "created_at": obj.created_at,
         }
         return cls(**data)

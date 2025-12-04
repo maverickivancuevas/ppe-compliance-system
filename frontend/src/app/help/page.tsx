@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 
 export default function HelpPage() {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
 
   const faqs = [
@@ -261,7 +262,7 @@ export default function HelpPage() {
               <div>
                 <p className="text-sm text-muted-foreground">API Docs</p>
                 <a
-                  href="http://localhost:8000/docs"
+                  href={`${API_URL}/docs`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-semibold text-primary hover:underline"

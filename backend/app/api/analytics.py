@@ -48,7 +48,8 @@ def get_compliance_trend(
     filter_conditions = [
         DetectionEvent.timestamp >= start_dt,
         DetectionEvent.timestamp <= end_dt,
-        DetectionEvent.person_detected == True
+        DetectionEvent.person_detected == True,
+        DetectionEvent.archived == False  # Exclude archived detections
     ]
 
     # Add camera filter if specified
@@ -122,7 +123,8 @@ def get_violations_by_camera(
         DetectionEvent.timestamp >= start_dt,
         DetectionEvent.timestamp <= end_dt,
         DetectionEvent.person_detected == True,
-        DetectionEvent.is_compliant == False
+        DetectionEvent.is_compliant == False,
+        DetectionEvent.archived == False  # Exclude archived detections
     ]
 
     # Add camera filter if specified
@@ -193,7 +195,8 @@ def get_violation_types(
             DetectionEvent.timestamp >= start_dt,
             DetectionEvent.timestamp <= end_dt,
             DetectionEvent.person_detected == True,
-            DetectionEvent.is_compliant == False
+            DetectionEvent.is_compliant == False,
+            DetectionEvent.archived == False  # Exclude archived detections
         )
     )
 
@@ -270,7 +273,8 @@ def get_analytics_summary(
     current_filter_conditions = [
         DetectionEvent.timestamp >= start_dt,
         DetectionEvent.timestamp <= end_dt,
-        DetectionEvent.person_detected == True
+        DetectionEvent.person_detected == True,
+        DetectionEvent.archived == False  # Exclude archived detections
     ]
 
     # Add camera filter if specified
@@ -367,7 +371,8 @@ def get_violation_heatmap(
         DetectionEvent.timestamp >= start_dt,
         DetectionEvent.timestamp <= end_dt,
         DetectionEvent.person_detected == True,
-        DetectionEvent.is_compliant == False
+        DetectionEvent.is_compliant == False,
+        DetectionEvent.archived == False  # Exclude archived detections
     ]
 
     # Add camera filter if specified
@@ -448,7 +453,8 @@ def get_shift_analytics(
         and_(
             DetectionEvent.timestamp >= start_dt,
             DetectionEvent.timestamp <= end_dt,
-            DetectionEvent.person_detected == True
+            DetectionEvent.person_detected == True,
+            DetectionEvent.archived == False  # Exclude archived detections
         )
     )
 

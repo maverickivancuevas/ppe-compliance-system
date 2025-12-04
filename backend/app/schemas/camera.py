@@ -53,8 +53,12 @@ class CameraUpdate(BaseModel):
     description: Optional[str] = None
 
 
-class CameraResponse(CameraBase):
+class CameraResponse(BaseModel):
     id: str
+    name: str
+    location: str
+    stream_url: Optional[str] = None
+    description: Optional[str] = None
     status: CameraStatus
     created_at: datetime
     updated_at: datetime

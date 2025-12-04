@@ -10,7 +10,6 @@ import {
   Users,
   AlertCircle,
   BarChart3,
-  FileText,
   Settings,
   Bell,
   History,
@@ -26,7 +25,6 @@ import {
   UserCircle,
   QrCode,
   ScanLine,
-  TrendingUp,
   Image,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -40,30 +38,36 @@ interface NavItem {
   children?: NavItem[];
 }
 
+interface SystemSettings {
+  company_name: string;
+  system_name: string;
+  logo_url?: string;
+}
+
 const adminNavItems: NavItem[] = [
   {
     title: 'Dashboard',
     href: '/admin',
     icon: <LayoutDashboard className="h-5 w-5" />,
-    roles: ['admin'],
+    roles: ['super_admin', 'admin'],
   },
   {
     title: 'Cameras',
     href: '/admin/cameras',
     icon: <Camera className="h-5 w-5" />,
-    roles: ['admin'],
+    roles: ['super_admin', 'admin'],
   },
   {
     title: 'Users',
     href: '/admin/users',
     icon: <Users className="h-5 w-5" />,
-    roles: ['admin'],
+    roles: ['super_admin', 'admin'],
   },
   {
     title: 'Settings',
     href: '/admin/settings',
     icon: <Settings className="h-5 w-5" />,
-    roles: ['admin'],
+    roles: ['super_admin', 'admin'],
   },
 ];
 
@@ -123,11 +127,6 @@ const managerNavItems: NavItem[] = [
         href: '/safety-manager/workers/scan',
         icon: <ScanLine className="h-4 w-4" />,
       },
-      {
-        title: 'Performance Metrics',
-        href: '/safety-manager/workers/metrics',
-        icon: <TrendingUp className="h-4 w-4" />,
-      },
     ],
   },
   {
@@ -135,34 +134,44 @@ const managerNavItems: NavItem[] = [
     href: '/safety-manager/analytics',
     icon: <BarChart3 className="h-5 w-5" />,
   },
-  {
-    title: 'Reports',
-    href: '/safety-manager/reports',
-    icon: <FileText className="h-5 w-5" />,
-  },
 ];
 
-const sharedNavItems: NavItem[] = [
-  {
-    title: 'Notifications',
-    href: '/notifications',
-    icon: <Bell className="h-5 w-5" />,
-  },
-  {
-    title: 'Help',
-    href: '/help',
-    icon: <HelpCircle className="h-5 w-5" />,
-  },
-];
+// Removed Notifications and Help menu items as they are not needed
+// const sharedNavItems: NavItem[] = [
+//   {
+//     title: 'Notifications',
+//     href: '/notifications',
+//     icon: <Bell className="h-5 w-5" />,
+//   },
+//   {
+//     title: 'Help',
+//     href: '/help',
+//     icon: <HelpCircle className="h-5 w-5" />,
+//   },
+// ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  const [settings, setSettings] = useState<SystemSettings>({
+    company_name: 'Your Company',
+    system_name: 'PPE Compliance',
+  });
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+  // Fetch general settings for logo and company name
+  useEffect(() => {
+    fetch(`${API_URL}/api/settings/general`)
+      .then(res => res.json())
+      .then(data => setSettings(data))
+      .catch(err => console.error('Failed to load settings:', err));
+  }, []);
 
   if (!user) return null;
 
-  const navItems = user.role === 'admin' ? adminNavItems : managerNavItems;
+  const navItems = (user.role === 'super_admin' || user.role === 'admin') ? adminNavItems : managerNavItems;
 
   // Automatically open parent menus based on current pathname
   useEffect(() => {
@@ -194,10 +203,20 @@ export function Sidebar() {
     <div className="flex h-screen w-64 flex-col border-r bg-card">
       {/* Logo/Brand */}
       <div className="flex h-16 items-center gap-2 border-b px-6">
-        <Shield className="h-8 w-8 text-primary" />
-        <div className="flex flex-col">
-          <span className="font-bold text-sm">PPE Compliance</span>
-          <span className="text-xs text-muted-foreground">Safety System</span>
+        {settings.logo_url ? (
+          <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
+            <img
+              src={`${API_URL}${settings.logo_url}`}
+              alt={settings.company_name}
+              className="max-w-full max-h-full object-contain"
+            />
+          </div>
+        ) : (
+          <Shield className="h-8 w-8 text-primary flex-shrink-0" />
+        )}
+        <div className="flex flex-col min-w-0">
+          <span className="font-bold text-sm truncate">{settings.company_name || 'PPE Compliance'}</span>
+          <span className="text-xs text-muted-foreground truncate">Safety System</span>
         </div>
       </div>
 
@@ -273,8 +292,8 @@ export function Sidebar() {
           })}
         </div>
 
-        {/* Shared Items */}
-        <div className="mt-6 space-y-1 border-t pt-4">
+        {/* Shared Items - Removed as not needed */}
+        {/* <div className="mt-6 space-y-1 border-t pt-4">
           <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             General
           </p>
@@ -296,7 +315,7 @@ export function Sidebar() {
               </Link>
             ) : null;
           })}
-        </div>
+        </div> */}
       </nav>
 
       {/* User Profile & Logout */}

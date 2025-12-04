@@ -19,6 +19,7 @@ class Alert(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     detection_event_id = Column(String, ForeignKey("detection_events.id", ondelete="CASCADE"), nullable=False, index=True)
     track_id = Column(String, nullable=True, index=True)  # Track ID from YOLO tracking (for deduplication)
+    worker_id = Column(String, nullable=True, index=True)  # Worker ID (stable ID from IoU tracking)
     severity = Column(Enum(AlertSeverity), default=AlertSeverity.MEDIUM, nullable=False)
     message = Column(Text, nullable=False)
     acknowledged = Column(Boolean, default=False, nullable=False)

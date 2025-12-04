@@ -16,6 +16,9 @@ class DetectionEvent(Base):
     # Tracking ID from ByteTrack (assigned by YOLO tracking)
     track_id = Column(String, nullable=True, index=True)  # e.g., "1", "2", "3" per camera
 
+    # Worker ID (stable ID assigned by IoU tracking)
+    worker_id = Column(String, nullable=True, index=True)  # e.g., "1", "2", "3" per camera
+
     # Detection results (boolean fields)
     person_detected = Column(Boolean, default=False, nullable=False)
     hardhat_detected = Column(Boolean, default=False, nullable=False)

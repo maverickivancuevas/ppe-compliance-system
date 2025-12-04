@@ -8,12 +8,14 @@ from .core.database import init_db, get_db
 from .core.security import get_password_hash
 from .core.logger import get_logger
 from .models.user import User, UserRole
-from .api.routes import auth, users, cameras, detections, reports, incidents, performance, recordings, person_tracking, near_miss, notifications, workers, attendance
+from .api.routes import auth, users, cameras, detections, workers, attendance, admin, performance
+from .api.routes import settings as settings_router
 from .api import alerts, analytics
 from .api.websocket import manager, start_stream_handler
 
 # Initialize logger
 logger = get_logger(__name__)
+
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -40,32 +42,11 @@ app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 # Initialize database on startup
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database and create default admin user"""
+    """Initialize database"""
     init_db()
 
-    # Create default admin user if no users exist
-    from .core.database import SessionLocal
-    db = SessionLocal()
-    try:
-        user_count = db.query(User).count()
-        if user_count == 0:
-            default_admin = User(
-                email=settings.DEFAULT_ADMIN_EMAIL,
-                full_name=settings.DEFAULT_ADMIN_NAME,
-                hashed_password=get_password_hash(settings.DEFAULT_ADMIN_PASSWORD),
-                role=UserRole.ADMIN,
-                is_active=True
-            )
-            db.add(default_admin)
-            db.commit()
-            logger.warning("=" * 60)
-            logger.warning("Default admin user created:")
-            logger.warning(f"Email: {settings.DEFAULT_ADMIN_EMAIL}")
-            logger.warning(f"Password: {settings.DEFAULT_ADMIN_PASSWORD}")
-            logger.warning("CRITICAL: CHANGE THIS PASSWORD IMMEDIATELY AFTER FIRST LOGIN!")
-            logger.warning("=" * 60)
-    finally:
-        db.close()
+    # No default admin - first user to register via OTP becomes super_admin
+    logger.info("Database initialized. Register the first user to become super admin.")
 
     # Start background archiving service
     from .services.archiving_service import get_archiving_service
@@ -92,37 +73,20 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(cameras.router, prefix="/api")
 app.include_router(detections.router, prefix="/api")
-app.include_router(reports.router, prefix="/api")
-app.include_router(incidents.router, prefix="/api")
-app.include_router(performance.router)
 app.include_router(alerts.router)
 app.include_router(analytics.router)
-# Phase 4 routers
-app.include_router(recordings.router, prefix="/api/recordings", tags=["recordings"])
-app.include_router(person_tracking.router, prefix="/api/tracking", tags=["person-tracking"])
-app.include_router(near_miss.router, prefix="/api/near-miss", tags=["near-miss"])
-app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
 # Worker Management routers
 app.include_router(workers.router, prefix="/api/workers", tags=["workers"])
 app.include_router(attendance.router, prefix="/api/attendance", tags=["attendance"])
+# Admin routers
+app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+# Settings routers
+app.include_router(settings_router.router, prefix="/api/settings", tags=["settings"])
+# Performance routers
+app.include_router(performance.router)
 
 
-# WebSocket endpoint for video streaming
-@app.websocket("/ws/stream/{camera_id}")
-async def websocket_stream(
-    websocket: WebSocket,
-    camera_id: str,
-    db: Session = Depends(get_db)
-):
-    """WebSocket endpoint for real-time video streaming"""
-    await manager.connect(websocket, camera_id)
-    try:
-        await start_stream_handler(camera_id, websocket, db)
-    finally:
-        manager.disconnect(websocket, camera_id)
-
-
-# WebSocket endpoint for monitoring (alias for compatibility)
+# WebSocket endpoint for monitoring
 @app.websocket("/ws/monitor/{camera_id}")
 async def websocket_monitor(
     websocket: WebSocket,
@@ -146,6 +110,55 @@ async def health_check():
         "app": settings.APP_NAME,
         "version": settings.APP_VERSION
     }
+
+
+# System health endpoint
+@app.get("/api/system/health")
+async def system_health(db: Session = Depends(get_db)):
+    """Get detailed system health status"""
+    from .services.yolo_service import get_yolo_service
+
+    health_status = {
+        "backend": {
+            "status": "online",
+            "message": "Backend API is running"
+        },
+        "database": {
+            "status": "connected",
+            "message": "Database is connected"
+        },
+        "yolo_model": {
+            "status": "unknown",
+            "message": "Model status unknown"
+        }
+    }
+
+    # Check database connection
+    try:
+        from sqlalchemy import text
+        db.execute(text("SELECT 1"))
+        health_status["database"]["status"] = "connected"
+        health_status["database"]["message"] = "Database connection successful"
+    except Exception as e:
+        health_status["database"]["status"] = "error"
+        health_status["database"]["message"] = f"Database error: {str(e)}"
+        logger.error(f"Database health check failed: {e}")
+
+    # Check YOLO model
+    try:
+        yolo_service = get_yolo_service()
+        if yolo_service.model is not None:
+            health_status["yolo_model"]["status"] = "loaded"
+            health_status["yolo_model"]["message"] = f"Model loaded with {len(yolo_service.model.names)} classes"
+        else:
+            health_status["yolo_model"]["status"] = "not_loaded"
+            health_status["yolo_model"]["message"] = "Model not loaded"
+    except Exception as e:
+        health_status["yolo_model"]["status"] = "error"
+        health_status["yolo_model"]["message"] = f"Model error: {str(e)}"
+        logger.error(f"YOLO model health check failed: {e}")
+
+    return health_status
 
 
 # Root endpoint

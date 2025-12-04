@@ -28,6 +28,7 @@ export default function DetectionHistoryPage() {
     start_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     end_date: new Date().toISOString().split('T')[0],
     status: 'all', // 'all', 'violations', 'compliant'
+    view: 'active', // 'active', 'archived', 'all'
   });
   const [search, setSearch] = useState('');
 
@@ -70,6 +71,13 @@ export default function DetectionHistoryPage() {
         params.compliant_only = true;
       }
 
+      // Add view filter (archived)
+      if (filters.view === 'archived') {
+        params.archived_only = true;
+      } else if (filters.view === 'all') {
+        params.include_archived = true;
+      }
+
       const data = await detectionsAPI.getAll(params);
       setDetections(data);
     } catch (error) {
@@ -81,10 +89,11 @@ export default function DetectionHistoryPage() {
 
   const handleExport = () => {
     // Simple CSV export
-    const headers = ['Date', 'Camera', 'Status', 'Violation Type'];
+    const headers = ['Date', 'Camera', 'Worker', 'Status', 'Violation Type'];
     const rows = detections.map((d) => [
       formatDate(d.timestamp),
       d.camera_id,
+      d.worker_id ? `Worker #${d.worker_id}` : 'N/A',
       d.is_compliant ? 'Compliant' : 'Violation',
       d.violation_type || 'N/A',
     ]);
@@ -123,7 +132,7 @@ export default function DetectionHistoryPage() {
         {/* Filters */}
         <Card className="p-4">
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Start Date</label>
                 <input
@@ -185,6 +194,24 @@ export default function DetectionHistoryPage() {
                   <option value="compliant">Compliant Only</option>
                 </select>
               </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">View</label>
+                <select
+                  value={filters.view}
+                  onChange={(e) =>
+                    setFilters({
+                      ...filters,
+                      view: e.target.value,
+                    })
+                  }
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-white"
+                >
+                  <option value="active">Active Only</option>
+                  <option value="archived">Archived Only</option>
+                  <option value="all">All (Active + Archived)</option>
+                </select>
+              </div>
             </div>
 
             <div className="flex gap-2">
@@ -198,6 +225,7 @@ export default function DetectionHistoryPage() {
                       .split('T')[0],
                     end_date: new Date().toISOString().split('T')[0],
                     status: 'all',
+                    view: 'active',
                   });
                 }}
               >
@@ -243,6 +271,7 @@ export default function DetectionHistoryPage() {
                   <TableRow>
                     <TableHead>Date & Time</TableHead>
                     <TableHead>Camera</TableHead>
+                    <TableHead>Worker</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>PPE Items</TableHead>
                     <TableHead>Violation</TableHead>
@@ -256,6 +285,15 @@ export default function DetectionHistoryPage() {
                         {formatDate(detection.timestamp)}
                       </TableCell>
                       <TableCell>{detection.camera_id.substring(0, 8)}...</TableCell>
+                      <TableCell>
+                        {detection.worker_id ? (
+                          <span className="px-2 py-1 bg-blue-500/10 text-blue-500 rounded text-xs font-medium">
+                            Worker #{detection.worker_id}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">-</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         {detection.is_compliant ? (
                           <div className="flex items-center gap-2 text-green-500">

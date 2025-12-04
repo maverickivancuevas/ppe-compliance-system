@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { analyticsAPI, camerasAPI } from '@/lib/api';
-import { TrendingUp, TrendingDown, AlertCircle, CheckCircle, Calendar, Download, BarChart3, Sun, Moon, MapPin } from 'lucide-react';
+import { analyticsAPI, camerasAPI, detectionsAPI } from '@/lib/api';
+import { TrendingUp, TrendingDown, AlertCircle, CheckCircle, Calendar, Download, BarChart3, Sun, Moon, MapPin, FileSpreadsheet } from 'lucide-react';
 
 interface ComplianceTrendData {
   date: string;
@@ -319,6 +319,86 @@ export default function AnalyticsPage() {
     doc.save(fileName);
   };
 
+  const exportToCSV = async () => {
+    try {
+      // Fetch all detections from the database with cache-busting timestamp
+      const detections = await detectionsAPI.getAll({ _t: Date.now() });
+
+      if (!detections || detections.length === 0) {
+        alert('No detection data available to export');
+        return;
+      }
+
+      // Group detections by camera
+      const detectionsByCamera: { [key: string]: any[] } = {};
+
+      detections.forEach((detection: any) => {
+        const cameraId = detection.camera_id || 'Unknown';
+        if (!detectionsByCamera[cameraId]) {
+          detectionsByCamera[cameraId] = [];
+        }
+        detectionsByCamera[cameraId].push(detection);
+      });
+
+      // Create CSV content
+      let csvContent = '';
+
+      // Process each camera
+      Object.keys(detectionsByCamera).sort().forEach((cameraId) => {
+        const cameraDetections = detectionsByCamera[cameraId];
+        const cameraName = cameras.find(c => c.id === cameraId)?.name || cameraId;
+        const cameraLocation = cameras.find(c => c.id === cameraId)?.location || 'Unknown';
+
+        // Camera header
+        csvContent += `\nCamera: ${cameraName}\n`;
+        csvContent += `Location: ${cameraLocation}\n`;
+        csvContent += `Total Detections: ${cameraDetections.length}\n\n`;
+
+        // CSV Headers
+        csvContent += 'Detection ID,Timestamp,Person Detected,Hardhat Detected,No Hardhat,Safety Vest Detected,No Safety Vest,Is Compliant,Violation Type,Confidence Scores\n';
+
+        // Add each detection
+        cameraDetections.forEach((detection) => {
+          const timestamp = new Date(detection.timestamp).toLocaleString();
+          const confidenceScores = detection.confidence_scores
+            ? (typeof detection.confidence_scores === 'string'
+                ? detection.confidence_scores
+                : JSON.stringify(detection.confidence_scores))
+            : '';
+
+          csvContent += `"${detection.id}",`;
+          csvContent += `"${timestamp}",`;
+          csvContent += `"${detection.person_detected ? 'Yes' : 'No'}",`;
+          csvContent += `"${detection.hardhat_detected ? 'Yes' : 'No'}",`;
+          csvContent += `"${detection.no_hardhat_detected ? 'Yes' : 'No'}",`;
+          csvContent += `"${detection.safety_vest_detected ? 'Yes' : 'No'}",`;
+          csvContent += `"${detection.no_safety_vest_detected ? 'Yes' : 'No'}",`;
+          csvContent += `"${detection.is_compliant ? 'Yes' : 'No'}",`;
+          csvContent += `"${detection.violation_type || 'None'}",`;
+          csvContent += `"${confidenceScores.replace(/"/g, '""')}"\n`;
+        });
+
+        csvContent += '\n';
+      });
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+
+      link.setAttribute('href', url);
+      link.setAttribute('download', `PPE_Detections_Database_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error exporting to CSV:', error);
+      alert('Failed to export CSV. Please try again.');
+    }
+  };
+
   return (
     <DashboardLayout>
       {/* Header */}
@@ -378,6 +458,14 @@ export default function AnalyticsPage() {
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export PDF Report
+              </Button>
+              <Button
+                size="sm"
+                variant="default"
+                onClick={exportToCSV}
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Export CSV Database
               </Button>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">Camera:</span>
@@ -471,29 +559,80 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
               ) : (
-                <div className="h-64 flex items-end justify-between gap-2">
-                  {complianceTrend.map((day, idx) => {
-                    const barHeight = Math.max((day.compliance_rate / 100) * 200, 4);
-                    return (
-                      <div key={idx} className="flex-1 flex flex-col items-center gap-2">
-                        <div className="w-full flex flex-col items-center relative group">
-                          <div
-                            className={`w-full rounded-t transition-all ${getComplianceTrendColor(day.compliance_rate)}`}
-                            style={{ height: `${barHeight}px` }}
-                            title={`${day.compliance_rate.toFixed(1)}% - ${day.total_detections} detections`}
-                          ></div>
-                          <div className="absolute -top-6 hidden group-hover:block bg-black text-white text-xs rounded px-2 py-1 whitespace-nowrap">
-                            {day.compliance_rate.toFixed(1)}%
-                            <br />
-                            {day.total_detections} total
-                          </div>
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </span>
-                      </div>
-                    );
-                  })}
+                <div className="h-64 relative">
+                  <svg width="100%" height="100%" viewBox="0 0 800 256" preserveAspectRatio="none">
+                    {/* Grid lines */}
+                    <line x1="0" y1="51" x2="800" y2="51" stroke="currentColor" strokeWidth="1" opacity="0.1" />
+                    <line x1="0" y1="102" x2="800" y2="102" stroke="currentColor" strokeWidth="1" opacity="0.1" />
+                    <line x1="0" y1="153" x2="800" y2="153" stroke="currentColor" strokeWidth="1" opacity="0.1" />
+                    <line x1="0" y1="204" x2="800" y2="204" stroke="currentColor" strokeWidth="1" opacity="0.1" />
+
+                    {/* Y-axis labels */}
+                    <text x="5" y="15" fill="currentColor" fontSize="12" opacity="0.5">100%</text>
+                    <text x="5" y="66" fill="currentColor" fontSize="12" opacity="0.5">75%</text>
+                    <text x="5" y="117" fill="currentColor" fontSize="12" opacity="0.5">50%</text>
+                    <text x="5" y="168" fill="currentColor" fontSize="12" opacity="0.5">25%</text>
+                    <text x="5" y="219" fill="currentColor" fontSize="12" opacity="0.5">0%</text>
+
+                    {/* Line path */}
+                    <path
+                      d={complianceTrend.map((day, idx) => {
+                        const x = (idx / (complianceTrend.length - 1)) * 800;
+                        const y = 204 - (day.compliance_rate / 100) * 204;
+                        return `${idx === 0 ? 'M' : 'L'} ${x} ${y}`;
+                      }).join(' ')}
+                      stroke="#eab308"
+                      strokeWidth="3"
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+
+                    {/* Area under line */}
+                    <path
+                      d={complianceTrend.map((day, idx) => {
+                        const x = (idx / (complianceTrend.length - 1)) * 800;
+                        const y = 204 - (day.compliance_rate / 100) * 204;
+                        if (idx === 0) return `M ${x} ${y}`;
+                        if (idx === complianceTrend.length - 1) return `L ${x} ${y} L ${x} 204 L 0 204 Z`;
+                        return `L ${x} ${y}`;
+                      }).join(' ')}
+                      fill="#eab308"
+                      opacity="0.1"
+                    />
+
+                    {/* Data points */}
+                    {complianceTrend.map((day, idx) => {
+                      const x = (idx / (complianceTrend.length - 1)) * 800;
+                      const y = 204 - (day.compliance_rate / 100) * 204;
+                      const color = day.compliance_rate >= 90 ? '#22c55e' : day.compliance_rate >= 75 ? '#eab308' : '#ef4444';
+
+                      return (
+                        <g key={idx}>
+                          <circle
+                            cx={x}
+                            cy={y}
+                            r="6"
+                            fill={color}
+                            stroke="white"
+                            strokeWidth="2"
+                            className="cursor-pointer hover:r-8 transition-all"
+                          >
+                            <title>{`${new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}\n${day.compliance_rate.toFixed(1)}%\n${day.total_detections} detections`}</title>
+                          </circle>
+                        </g>
+                      );
+                    })}
+                  </svg>
+
+                  {/* X-axis labels */}
+                  <div className="flex justify-between mt-2 px-2">
+                    {complianceTrend.map((day, idx) => (
+                      <span key={idx} className="text-xs text-muted-foreground">
+                        {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -779,75 +918,6 @@ export default function AnalyticsPage() {
               </div>
             </Card>
           )}
-
-          {/* Insights */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-1">Insights & Recommendations</h3>
-            <p className="text-sm text-muted-foreground mb-4">AI-powered safety insights</p>
-
-            <div className="space-y-4">
-              {summary.compliance_rate >= 95 && (
-                <div className="flex gap-3 p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-                  <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-green-500">Excellent Compliance</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Your team maintains outstanding PPE compliance. Keep up the great work!
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {summary.compliance_rate < 90 && summary.compliance_rate >= 75 && (
-                <div className="flex gap-3 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                  <AlertCircle className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-yellow-500">Compliance Warning</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Compliance rate is below target. Consider additional training or reminders.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {summary.compliance_rate < 75 && (
-                <div className="flex gap-3 p-4 rounded-lg bg-red-500/10 border border-red-500/20">
-                  <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-red-500">Immediate Action Required</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Critical compliance rate. Immediate intervention and training recommended.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {summary.improvement_percentage > 5 && (
-                <div className="flex gap-3 p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                  <TrendingUp className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-blue-500">Positive Trend</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Compliance improved by {summary.improvement_percentage.toFixed(1)}% since last period. Great progress!
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {violationTypes.length > 0 && (
-                <div className="flex gap-3 p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                  <AlertCircle className="h-5 w-5 text-purple-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-purple-500">Focus Area</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Most common violation: {violationTypes[0].ppe_type} ({violationTypes[0].count} cases).
-                      Consider targeted training for this specific PPE requirement.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </Card>
       </main>
     </DashboardLayout>
   );

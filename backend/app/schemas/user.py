@@ -30,6 +30,14 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
+    password: Optional[str] = None  # Optional password reset (super admin only)
+
+    @field_validator('password')
+    @classmethod
+    def validate_password_strength(cls, v):
+        if v is not None:  # Only validate if password is being changed
+            return validate_password(v)
+        return v
 
 
 class UserResponse(UserBase):

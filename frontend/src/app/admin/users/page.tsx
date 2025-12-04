@@ -25,7 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { usersAPI } from '@/lib/api';
 import { User } from '@/types';
-import { Plus, Edit, Trash2, Users as UsersIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, Users as UsersIcon, Eye, EyeOff, CheckCircle2, XCircle } from 'lucide-react';
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -36,7 +36,17 @@ export default function UsersPage() {
     email: '',
     full_name: '',
     password: '',
+    admin_password: '',
     role: 'safety_manager' as 'admin' | 'safety_manager',
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [passwordRequirements, setPasswordRequirements] = useState({
+    length: false,
+    uppercase: false,
+    lowercase: false,
+    digit: false,
+    special: false,
   });
 
   useEffect(() => {
@@ -54,9 +64,22 @@ export default function UsersPage() {
     }
   };
 
+  const checkPasswordRequirements = (password: string) => {
+    setPasswordRequirements({
+      length: password.length >= 12,
+      uppercase: /[A-Z]/.test(password),
+      lowercase: /[a-z]/.test(password),
+      digit: /[0-9]/.test(password),
+      special: /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password),
+    });
+  };
+
   const handleAdd = () => {
     setEditingUser(null);
-    setFormData({ email: '', full_name: '', password: '', role: 'safety_manager' });
+    setFormData({ email: '', full_name: '', password: '', admin_password: '', role: 'safety_manager' });
+    setPasswordRequirements({ length: false, uppercase: false, lowercase: false, digit: false, special: false });
+    setShowPassword(false);
+    setShowAdminPassword(false);
     setIsDialogOpen(true);
   };
 
@@ -65,7 +88,8 @@ export default function UsersPage() {
     setFormData({
       email: user.email,
       full_name: user.full_name,
-      password: '', // Don't show password
+      password: '',
+      admin_password: '',
       role: user.role,
     });
     setIsDialogOpen(true);
@@ -94,14 +118,36 @@ export default function UsersPage() {
           full_name: formData.full_name,
           role: formData.role,
         };
+        // Include password if it's being changed
+        if (formData.password) {
+          const allRequirementsMet = Object.values(passwordRequirements).every(req => req);
+          if (!allRequirementsMet) {
+            alert('Password does not meet all security requirements');
+            return;
+          }
+          updateData.password = formData.password;
+        }
         await usersAPI.update(editingUser.id, updateData);
       } else {
-        // For create, password is required
-        if (!formData.password || formData.password.length < 8) {
-          alert('Password must be at least 8 characters');
+        // For create, use admin endpoint with password confirmation
+        const allRequirementsMet = Object.values(passwordRequirements).every(req => req);
+        if (!allRequirementsMet) {
+          alert('Password does not meet all security requirements');
           return;
         }
-        await usersAPI.create(formData);
+
+        if (!formData.admin_password) {
+          alert('Admin password confirmation is required');
+          return;
+        }
+
+        await usersAPI.adminCreate({
+          email: formData.email,
+          password: formData.password,
+          full_name: formData.full_name,
+          role: formData.role,
+          admin_password: formData.admin_password,
+        });
       }
       setIsDialogOpen(false);
       await loadUsers();
@@ -112,10 +158,28 @@ export default function UsersPage() {
   };
 
   const getRoleBadge = (role: string) => {
-    return role === 'admin'
-      ? 'bg-primary/10 text-primary'
-      : 'bg-blue-500/10 text-blue-500';
+    switch (role) {
+      case 'super_admin':
+        return 'bg-yellow-500/10 text-yellow-500';
+      case 'admin':
+        return 'bg-blue-500/10 text-blue-500';
+      case 'safety_manager':
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
+      default:
+        return 'bg-gray-500/10 text-gray-500';
+    }
   };
+
+  const PasswordRequirement = ({ met, text }: { met: boolean; text: string }) => (
+    <div className="flex items-center gap-2 text-xs">
+      {met ? (
+        <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+      ) : (
+        <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
+      )}
+      <span className={met ? 'text-green-500' : 'text-muted-foreground'}>{text}</span>
+    </div>
+  );
 
   return (
     <DashboardLayout requiredRole="admin">
@@ -165,7 +229,9 @@ export default function UsersPage() {
                 {users.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.full_name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      {user.role === 'super_admin' ? '••••••••@••••••.com' : user.email}
+                    </TableCell>
                     <TableCell>
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getRoleBadge(
@@ -215,7 +281,7 @@ export default function UsersPage() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
               {editingUser ? 'Edit User' : 'Add New User'}
@@ -223,7 +289,7 @@ export default function UsersPage() {
             <DialogDescription>
               {editingUser
                 ? 'Update user information and role'
-                : 'Create a new user account'}
+                : 'Create a new user account with strong security'}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
@@ -256,23 +322,6 @@ export default function UsersPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">
-                  Password{editingUser ? ' (leave blank to keep current)' : '*'}
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder={editingUser ? 'Leave blank to keep current' : 'Min. 8 characters'}
-                  value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
-                  required={!editingUser}
-                  minLength={editingUser ? undefined : 8}
-                />
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="role">Role*</Label>
                 <select
                   id="role"
@@ -290,9 +339,76 @@ export default function UsersPage() {
                   <option value="admin">Administrator</option>
                 </select>
                 <p className="text-xs text-muted-foreground">
-                  Admin: Full system access | Safety Manager: Monitoring only
+                  Super Admin: Full system access | Admin: Create safety managers & cameras | Safety Manager: Monitoring only
                 </p>
               </div>
+
+              {/* Password field - required for new users, optional for editing */}
+              <div className="space-y-2">
+                <Label htmlFor="password">
+                  Password{!editingUser && '*'}
+                  {editingUser && <span className="text-xs text-muted-foreground ml-2">(Leave blank to keep current password)</span>}
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder={editingUser ? "Enter new password to reset" : "Enter strong password"}
+                    value={formData.password}
+                    onChange={(e) => {
+                      setFormData({ ...formData, password: e.target.value });
+                      checkPasswordRequirements(e.target.value);
+                    }}
+                    required={!editingUser}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+
+                {formData.password && (
+                  <div className="mt-3 p-3 bg-muted/50 rounded-md space-y-1.5">
+                    <p className="text-xs font-medium mb-2">Password Requirements:</p>
+                    <PasswordRequirement met={passwordRequirements.length} text="At least 12 characters" />
+                    <PasswordRequirement met={passwordRequirements.uppercase} text="One uppercase letter" />
+                    <PasswordRequirement met={passwordRequirements.lowercase} text="One lowercase letter" />
+                    <PasswordRequirement met={passwordRequirements.digit} text="One number" />
+                    <PasswordRequirement met={passwordRequirements.special} text="One special character (!@#$%^&*...)" />
+                  </div>
+                )}
+              </div>
+
+              {!editingUser && (
+                <div className="space-y-2">
+                    <Label htmlFor="admin_password">Your Admin Password*</Label>
+                    <div className="relative">
+                      <Input
+                        id="admin_password"
+                        type={showAdminPassword ? 'text' : 'password'}
+                        placeholder="Confirm your password to create user"
+                        value={formData.admin_password}
+                        onChange={(e) =>
+                          setFormData({ ...formData, admin_password: e.target.value })
+                        }
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAdminPassword(!showAdminPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showAdminPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Enter your admin password to confirm user creation
+                    </p>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button

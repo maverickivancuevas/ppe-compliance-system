@@ -12,7 +12,7 @@ export default function Home() {
     checkAuth().then(() => {
       if (user) {
         // Redirect based on role
-        if (user.role === 'admin') {
+        if (user.role === 'super_admin' || user.role === 'admin') {
           router.push('/admin');
         } else {
           router.push('/safety-manager');

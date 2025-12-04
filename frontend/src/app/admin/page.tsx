@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Camera, Users, AlertCircle, TrendingUp, Settings, ArrowRight } from 'lucide-react';
 
 export default function AdminDashboard() {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
   const [stats, setStats] = useState({
     totalCameras: 0,
     activeCameras: 0,
@@ -18,12 +20,21 @@ export default function AdminDashboard() {
     violations: 0,
     complianceRate: 0,
   });
+  const [health, setHealth] = useState({
+    backend: { status: 'checking', message: 'Checking...' },
+    database: { status: 'checking', message: 'Checking...' },
+    yolo_model: { status: 'checking', message: 'Checking...' },
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadStats();
+    loadHealth();
     // Refresh stats every 30 seconds
-    const interval = setInterval(loadStats, 30000);
+    const interval = setInterval(() => {
+      loadStats();
+      loadHealth();
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -47,6 +58,23 @@ export default function AdminDashboard() {
       console.error('Failed to load stats:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadHealth = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/system/health`);
+      if (response.ok) {
+        const data = await response.json();
+        setHealth(data);
+      }
+    } catch (error) {
+      console.error('Failed to load health:', error);
+      setHealth({
+        backend: { status: 'error', message: 'Cannot connect to backend' },
+        database: { status: 'unknown', message: 'Unknown' },
+        yolo_model: { status: 'unknown', message: 'Unknown' },
+      });
     }
   };
 
@@ -167,7 +195,7 @@ export default function AdminDashboard() {
                       <ArrowRight className="h-4 w-4" />
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      Configure system parameters
+                      Configure system settings
                     </div>
                   </div>
                 </Button>
@@ -187,22 +215,50 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between">
                 <span className="text-sm">Backend API</span>
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                  <span className="text-sm font-medium text-green-500">Online</span>
+                  <div className={`h-2 w-2 rounded-full ${
+                    health.backend.status === 'online' ? 'bg-green-500' :
+                    health.backend.status === 'error' ? 'bg-red-500' : 'bg-yellow-500'
+                  }`}></div>
+                  <span className={`text-sm font-medium ${
+                    health.backend.status === 'online' ? 'text-green-500' :
+                    health.backend.status === 'error' ? 'text-red-500' : 'text-yellow-500'
+                  }`}>
+                    {health.backend.status === 'online' ? 'Online' :
+                     health.backend.status === 'error' ? 'Error' : 'Checking...'}
+                  </span>
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">Database</span>
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                  <span className="text-sm font-medium text-green-500">Connected</span>
+                  <div className={`h-2 w-2 rounded-full ${
+                    health.database.status === 'connected' ? 'bg-green-500' :
+                    health.database.status === 'error' ? 'bg-red-500' : 'bg-yellow-500'
+                  }`}></div>
+                  <span className={`text-sm font-medium ${
+                    health.database.status === 'connected' ? 'text-green-500' :
+                    health.database.status === 'error' ? 'text-red-500' : 'text-yellow-500'
+                  }`}>
+                    {health.database.status === 'connected' ? 'Connected' :
+                     health.database.status === 'error' ? 'Error' : 'Checking...'}
+                  </span>
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">YOLO Model</span>
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                  <span className="text-sm font-medium text-green-500">Loaded</span>
+                  <div className={`h-2 w-2 rounded-full ${
+                    health.yolo_model.status === 'loaded' ? 'bg-green-500' :
+                    health.yolo_model.status === 'not_loaded' || health.yolo_model.status === 'error' ? 'bg-red-500' : 'bg-yellow-500'
+                  }`}></div>
+                  <span className={`text-sm font-medium ${
+                    health.yolo_model.status === 'loaded' ? 'text-green-500' :
+                    health.yolo_model.status === 'not_loaded' || health.yolo_model.status === 'error' ? 'text-red-500' : 'text-yellow-500'
+                  }`}>
+                    {health.yolo_model.status === 'loaded' ? 'Loaded' :
+                     health.yolo_model.status === 'not_loaded' ? 'Not Loaded' :
+                     health.yolo_model.status === 'error' ? 'Error' : 'Checking...'}
+                  </span>
                 </div>
               </div>
               <div className="flex items-center justify-between">
@@ -234,7 +290,7 @@ export default function AdminDashboard() {
                 <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
                   3
                 </div>
-                <p className="text-sm">Configure detection settings as needed</p>
+                <p className="text-sm">Configure system settings as needed</p>
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">

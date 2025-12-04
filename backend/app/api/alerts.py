@@ -60,6 +60,7 @@ def get_alerts(
                 "acknowledged_by": alert.acknowledged_by_user.full_name if alert.acknowledged_by_user else None,
                 "acknowledged_at": alert.acknowledged_at.isoformat() if alert.acknowledged_at else None,
                 "created_at": alert.created_at.isoformat(),
+                "worker_id": alert.worker_id,
                 "camera": {
                     "id": alert.detection_event.camera.id,
                     "name": alert.detection_event.camera.name,

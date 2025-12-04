@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { Sidebar } from './Sidebar';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  requiredRole?: 'admin' | 'safety_manager';
+  requiredRole?: 'super_admin' | 'admin' | 'safety_manager';
 }
 
 export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps) {
@@ -45,7 +46,12 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
     }
 
     if (requiredRole && user.role !== requiredRole) {
-      // Redirect to appropriate dashboard
+      // Super admin has access to all dashboards
+      if (user.role === 'super_admin') {
+        return; // Allow access
+      }
+
+      // Redirect to appropriate dashboard based on role
       if (user.role === 'admin') {
         router.push('/admin');
       } else {
@@ -69,9 +75,17 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Header Bar */}
+        <header className="h-16 border-b bg-card flex items-center justify-end px-6">
+          <ThemeToggle />
+        </header>
+
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import timedelta
+from pydantic import BaseModel, EmailStr, validator
+import re
 from ...core.database import get_db
 from ...core.security import (
     verify_password,
@@ -11,15 +13,24 @@ from ...core.security import (
 from ...core.config import settings
 from ...models.user import User
 from ...schemas.user import UserCreate, UserLogin, Token, UserResponse
+from ...services.otp_service import get_otp_service
+from ...services.email_service import get_email_service
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
-    """Register a new user"""
+    """Register a new user (DISABLED - Use admin endpoint instead)"""
 
-    # Check if user already exists
+    # Public registration is disabled
+    if not settings.ALLOW_PUBLIC_REGISTRATION:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Public registration is disabled. Please contact your system administrator to create an account."
+        )
+
+    # This code is unreachable when public registration is disabled
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
         raise HTTPException(
@@ -27,7 +38,6 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
             detail="Email already registered"
         )
 
-    # Create new user
     new_user = User(
         email=user_data.email,
         full_name=user_data.full_name,
@@ -83,3 +93,139 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
 def get_current_user_info(current_user: User = Depends(get_current_user)):
     """Get current user information"""
     return UserResponse.from_orm(current_user)
+
+
+# New registration schemas
+class SendOTPRequest(BaseModel):
+    email: EmailStr
+
+
+class VerifyOTPRequest(BaseModel):
+    email: EmailStr
+    otp: str
+
+
+class RegisterWithOTPRequest(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: str
+    otp: str
+
+    @validator('password')
+    def validate_password(cls, v):
+        """Validate password strength"""
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        if not re.search(r'[A-Z]', v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not re.search(r'[a-z]', v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not re.search(r'[0-9]', v):
+            raise ValueError('Password must contain at least one digit')
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
+            raise ValueError('Password must contain at least one special character')
+        return v
+
+
+@router.post("/send-otp")
+def send_otp(request: SendOTPRequest, db: Session = Depends(get_db)):
+    """Send OTP to email for registration"""
+
+    # Check if email already exists
+    existing_user = db.query(User).filter(User.email == request.email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+
+    # Generate OTP
+    otp_service = get_otp_service()
+    otp = otp_service.generate_otp(request.email)
+
+    # Send OTP via email
+    email_service = get_email_service()
+
+    # For development/testing: If email is not configured, return OTP in response
+    if not email_service.is_configured():
+        return {
+            "message": "Email service not configured. OTP generated for testing.",
+            "otp": otp,  # Only for development!
+            "expires_in_minutes": 10
+        }
+
+    # Send OTP email
+    if not email_service.send_otp_email(request.email, otp):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send verification email"
+        )
+
+    return {
+        "message": "Verification code sent to your email",
+        "expires_in_minutes": 10
+    }
+
+
+@router.post("/verify-otp")
+def verify_otp(request: VerifyOTPRequest):
+    """Verify OTP (for testing/validation before registration)"""
+    otp_service = get_otp_service()
+
+    if otp_service.verify_otp(request.email, request.otp):
+        return {"message": "OTP verified successfully"}
+
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Invalid or expired OTP"
+    )
+
+
+@router.post("/register-with-otp", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+def register_with_otp(request: RegisterWithOTPRequest, db: Session = Depends(get_db)):
+    """Register a new user with OTP verification - First user becomes super_admin"""
+
+    # Verify OTP
+    otp_service = get_otp_service()
+    if not otp_service.verify_otp(request.email, request.otp):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OTP"
+        )
+
+    # Check if email already exists (double check)
+    existing_user = db.query(User).filter(User.email == request.email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+
+    # Check if this is the first user (becomes super_admin)
+    user_count = db.query(User).count()
+    if user_count == 0:
+        user_role = "super_admin"  # First user is super_admin
+    else:
+        # Subsequent registrations are not allowed - users must be created by super_admin or admin
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Public registration is disabled. Please contact your super admin to create an account."
+        )
+
+    # Create new user
+    new_user = User(
+        email=request.email,
+        full_name=request.full_name,
+        hashed_password=get_password_hash(request.password),
+        role=user_role,
+        is_active=True
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    # Clear OTP after successful registration
+    otp_service.clear_otp(request.email)
+
+    return UserResponse.from_orm(new_user)

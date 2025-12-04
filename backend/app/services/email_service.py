@@ -224,6 +224,120 @@ class EmailService:
         attachments = [screenshot_path] if screenshot_path and screenshot_path.exists() else None
         return self.send_email(recipients, subject, html_body, text_body, attachments)
 
+    def send_otp_email(self, email: str, otp: str) -> bool:
+        """
+        Send OTP verification email
+
+        Args:
+            email: Recipient email address
+            otp: OTP code
+
+        Returns:
+            True if email sent successfully, False otherwise
+        """
+        subject = f"{settings.APP_NAME} - Email Verification Code"
+
+        # HTML email body
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                }}
+                .container {{
+                    max-width: 600px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }}
+                .header {{
+                    background-color: #eab308;
+                    color: white;
+                    padding: 20px;
+                    text-align: center;
+                    border-radius: 5px 5px 0 0;
+                }}
+                .content {{
+                    background-color: #f9f9f9;
+                    padding: 30px 20px;
+                    border: 1px solid #ddd;
+                    border-radius: 0 0 5px 5px;
+                    text-align: center;
+                }}
+                .otp-code {{
+                    font-size: 32px;
+                    font-weight: bold;
+                    letter-spacing: 8px;
+                    color: #eab308;
+                    background-color: #fef9c3;
+                    padding: 15px 30px;
+                    border-radius: 8px;
+                    display: inline-block;
+                    margin: 20px 0;
+                    border: 2px dashed #eab308;
+                }}
+                .footer {{
+                    margin-top: 20px;
+                    padding: 10px;
+                    text-align: center;
+                    font-size: 12px;
+                    color: #666;
+                }}
+                .warning {{
+                    color: #dc2626;
+                    font-size: 14px;
+                    margin-top: 20px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h2>🔐 Email Verification</h2>
+                </div>
+                <div class="content">
+                    <p>Thank you for registering with {settings.APP_NAME}!</p>
+                    <p>Please use the following verification code to complete your registration:</p>
+
+                    <div class="otp-code">{otp}</div>
+
+                    <p>This code will expire in <strong>10 minutes</strong>.</p>
+
+                    <p class="warning">
+                        ⚠️ If you didn't request this code, please ignore this email.
+                    </p>
+                </div>
+                <div class="footer">
+                    <p>This is an automated email from {settings.APP_NAME}</p>
+                    <p>Do not reply to this email</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        # Plain text body (fallback)
+        text_body = f"""
+        EMAIL VERIFICATION CODE
+
+        Thank you for registering with {settings.APP_NAME}!
+
+        Your verification code is: {otp}
+
+        This code will expire in 10 minutes.
+
+        If you didn't request this code, please ignore this email.
+
+        ---
+        This is an automated email from {settings.APP_NAME}
+        Do not reply to this email
+        """
+
+        return self.send_email([email], subject, html_body, text_body)
+
 
 # Global instance (singleton)
 _email_service = None

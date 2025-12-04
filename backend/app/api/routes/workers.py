@@ -143,7 +143,12 @@ def get_workers(
 
     # Filter by camera/location
     if camera_id:
-        query = query.filter(Worker.camera_id == camera_id)
+        if camera_id == "unassigned":
+            # Filter for workers with no camera assigned
+            query = query.filter(Worker.camera_id.is_(None))
+        else:
+            # Filter for specific camera
+            query = query.filter(Worker.camera_id == camera_id)
 
     # Search by name or account number
     if search:

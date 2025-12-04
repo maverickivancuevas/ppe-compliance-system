@@ -23,7 +23,6 @@ import {
   Trash2,
   Download,
   CheckCircle,
-  XCircle,
   Filter,
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
@@ -55,7 +54,6 @@ export default function WorkersListPage() {
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterActive, setFilterActive] = useState<boolean | null>(null);
   const [filterCamera, setFilterCamera] = useState<string>('');
   const [stats, setStats] = useState({
     total_workers: 0,
@@ -68,15 +66,11 @@ export default function WorkersListPage() {
     loadWorkers();
     loadCameras();
     loadStats();
-  }, [filterActive, filterCamera, searchTerm]);
+  }, [filterCamera, searchTerm]);
 
   const loadWorkers = async () => {
     try {
       const params: any = {};
-
-      if (filterActive !== null) {
-        params.is_active = filterActive;
-      }
 
       if (filterCamera) {
         params.camera_id = filterCamera;
@@ -98,7 +92,8 @@ export default function WorkersListPage() {
   const loadCameras = async () => {
     try {
       const data = await camerasAPI.getAll();
-      setCameras(data.cameras);
+      // camerasAPI.getAll() returns the array directly, not an object with a cameras property
+      setCameras(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to load cameras:', error);
     }
@@ -171,7 +166,7 @@ export default function WorkersListPage() {
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -179,26 +174,6 @@ export default function WorkersListPage() {
                   <p className="text-2xl font-bold">{stats.total_workers}</p>
                 </div>
                 <HardHat className="h-8 w-8 text-primary" />
-              </div>
-            </Card>
-
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Active Workers</p>
-                  <p className="text-2xl font-bold text-green-500">{stats.active_workers}</p>
-                </div>
-                <CheckCircle className="h-8 w-8 text-green-500" />
-              </div>
-            </Card>
-
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Inactive Workers</p>
-                  <p className="text-2xl font-bold text-gray-500">{stats.inactive_workers}</p>
-                </div>
-                <XCircle className="h-8 w-8 text-gray-500" />
               </div>
             </Card>
 
@@ -228,36 +203,9 @@ export default function WorkersListPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Status:</span>
-                <div className="flex gap-2">
-                  <Button
-                    variant={filterActive === null ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setFilterActive(null)}
-                  >
-                    All
-                  </Button>
-                  <Button
-                    variant={filterActive === true ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setFilterActive(true)}
-                  >
-                    Active
-                  </Button>
-                  <Button
-                    variant={filterActive === false ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setFilterActive(false)}
-                  >
-                    Inactive
-                  </Button>
-                </div>
-              </div>
-
               {cameras && cameras.length > 0 && (
                 <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Site:</span>
                   <select
                     value={filterCamera}
@@ -265,6 +213,7 @@ export default function WorkersListPage() {
                     className="rounded-lg border border-input bg-background px-3 py-1.5 text-sm"
                   >
                     <option value="">All Sites</option>
+                    <option value="unassigned">Unassigned</option>
                     {cameras.map((camera) => (
                       <option key={camera.id} value={camera.id}>
                         {camera.name}
@@ -288,11 +237,11 @@ export default function WorkersListPage() {
                 <HardHat className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No Workers Found</h3>
                 <p className="text-muted-foreground mb-4">
-                  {searchTerm || filterActive !== null || filterCamera
+                  {searchTerm || filterCamera
                     ? 'No workers match your search criteria.'
                     : 'Get started by adding your first construction worker.'}
                 </p>
-                {!searchTerm && filterActive === null && !filterCamera && (
+                {!searchTerm && !filterCamera && (
                   <Button onClick={() => router.push('/safety-manager/workers/add')}>
                     <UserPlus className="h-4 w-4 mr-2" />
                     Add First Worker
@@ -396,7 +345,7 @@ export default function WorkersListPage() {
           {workers.length > 0 && (
             <div className="text-sm text-muted-foreground text-center">
               Showing {workers.length} worker{workers.length !== 1 ? 's' : ''}
-              {(searchTerm || filterActive !== null || filterCamera) && ' (filtered)'}
+              {(searchTerm || filterCamera) && ' (filtered)'}
             </div>
           )}
       </main>

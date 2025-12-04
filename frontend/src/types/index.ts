@@ -34,6 +34,7 @@ export interface DetectionEvent {
   confidence_scores?: Record<string, number>;
   snapshot_url?: string;
   violation_type?: string;
+  worker_id?: string;
   created_at: string;
 }
 
@@ -45,6 +46,7 @@ export interface Alert {
   acknowledged: boolean;
   acknowledged_by?: string;
   acknowledged_at?: string;
+  worker_id?: string;
   created_at: string;
 }
 

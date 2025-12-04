@@ -90,13 +90,18 @@ def require_role(allowed_roles: list):
 
 
 # Role-specific dependencies
-def get_admin_user(current_user: User = Depends(require_role(["admin"]))) -> User:
-    """Require admin role"""
+def get_super_admin_user(current_user: User = Depends(require_role(["super_admin"]))) -> User:
+    """Require super_admin role"""
+    return current_user
+
+
+def get_admin_user(current_user: User = Depends(require_role(["super_admin", "admin"]))) -> User:
+    """Require admin or super_admin role"""
     return current_user
 
 
 def get_safety_manager_or_admin(
-    current_user: User = Depends(require_role(["admin", "safety_manager"]))
+    current_user: User = Depends(require_role(["super_admin", "admin", "safety_manager"]))
 ) -> User:
-    """Require safety_manager or admin role"""
+    """Require safety_manager, admin, or super_admin role"""
     return current_user

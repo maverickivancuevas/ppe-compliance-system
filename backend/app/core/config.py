@@ -38,6 +38,14 @@ class Settings(BaseSettings):
     # YOLO Model
     MODEL_PATH: str = "best.pt"  # YOLOv8s model in backend directory
 
+    # Security Settings
+    ALLOW_PUBLIC_REGISTRATION: bool = False  # Disable public registration
+    MIN_PASSWORD_LENGTH: int = 12  # Minimum password length
+    REQUIRE_PASSWORD_UPPERCASE: bool = True
+    REQUIRE_PASSWORD_LOWERCASE: bool = True
+    REQUIRE_PASSWORD_DIGIT: bool = True
+    REQUIRE_PASSWORD_SPECIAL: bool = True
+
     # Default Admin User (loaded from environment)
     DEFAULT_ADMIN_EMAIL: str = "admin@example.com"
     DEFAULT_ADMIN_PASSWORD: str = "admin123"

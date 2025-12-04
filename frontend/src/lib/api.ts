@@ -76,6 +76,11 @@ export const usersAPI = {
     return response.data;
   },
 
+  adminCreate: async (data: { email: string; password: string; full_name: string; role: string; admin_password: string }) => {
+    const response = await api.post('/admin/create-user', data);
+    return response.data;
+  },
+
   update: async (id: string, data: any) => {
     const response = await api.put(`/users/${id}`, data);
     return response.data;
@@ -138,6 +143,16 @@ export const detectionsAPI = {
   delete: async (id: string) => {
     await api.delete(`/detections/${id}`);
   },
+
+  clearSnapshot: async (id: string) => {
+    const response = await api.post(`/detections/${id}/clear-snapshot`);
+    return response.data;
+  },
+
+  clearAllSnapshots: async () => {
+    const response = await api.post('/detections/clear-all-snapshots');
+    return response.data;
+  },
 };
 
 // Alerts
@@ -165,63 +180,6 @@ export const alertsAPI = {
   deleteAll: async () => {
     const response = await api.delete('/alerts/all');
     return response.data;
-  },
-};
-
-// Incidents
-export const incidentsAPI = {
-  getAll: async (params?: any) => {
-    const response = await api.get('/incidents/', { params });
-    return response.data;
-  },
-
-  getById: async (id: string) => {
-    const response = await api.get(`/incidents/${id}`);
-    return response.data;
-  },
-
-  create: async (data: any) => {
-    const response = await api.post('/incidents/', data);
-    return response.data;
-  },
-
-  update: async (id: string, data: any) => {
-    const response = await api.put(`/incidents/${id}`, data);
-    return response.data;
-  },
-
-  delete: async (id: string) => {
-    await api.delete(`/incidents/${id}`);
-  },
-
-  getStats: async () => {
-    const response = await api.get('/incidents/stats/summary');
-    return response.data;
-  },
-};
-
-// Reports
-export const reportsAPI = {
-  generate: async (data: any) => {
-    const response = await api.post('/reports/generate', data, {
-      responseType: 'blob'
-    });
-    return response;
-  },
-
-  generateQuick: async (reportType: string, format: string) => {
-    const response = await api.get(`/reports/quick/${reportType}`, {
-      params: { format },
-      responseType: 'blob'
-    });
-    return response;
-  },
-
-  downloadTemplate: async (templateType: string) => {
-    const response = await api.get(`/reports/template/${templateType}`, {
-      responseType: 'blob'
-    });
-    return response;
   },
 };
 
@@ -326,6 +284,30 @@ export const attendanceAPI = {
 
   getWorkerStats: async (workerId: string) => {
     const response = await api.get(`/attendance/stats/worker/${workerId}`);
+    return response.data;
+  },
+};
+
+// Performance Settings
+export const performanceAPI = {
+  get: async () => {
+    const response = await api.get('/performance');
+    return response.data;
+  },
+
+  update: async (settings: {
+    confidence_threshold?: number;
+    iou_threshold?: number;
+    use_gpu?: boolean;
+    input_size?: number;
+    jpeg_quality?: number;
+  }) => {
+    const response = await api.put('/performance', settings);
+    return response.data;
+  },
+
+  toggleGPU: async () => {
+    const response = await api.post('/performance/toggle-gpu');
     return response.data;
   },
 };

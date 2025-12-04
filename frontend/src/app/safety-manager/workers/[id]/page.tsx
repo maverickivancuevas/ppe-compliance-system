@@ -72,6 +72,7 @@ interface AttendanceRecord {
 }
 
 export default function WorkerDetailPage() {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
   const params = useParams();
   const router = useRouter();
   const workerId = params.id as string;
@@ -433,7 +434,7 @@ export default function WorkerDetailPage() {
                   {worker.qr_code_url ? (
                     <div className="bg-white p-4 rounded-lg border-2 border-dashed">
                       <img
-                        src={`http://localhost:8000${worker.qr_code_url}`}
+                        src={`${API_URL}${worker.qr_code_url}`}
                         alt={`QR Code for ${worker.account_number}`}
                         className="w-full h-auto"
                       />

@@ -43,7 +43,7 @@ export default function SafetyManagerDashboard() {
       const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
       const [camerasData, detectionStats, workerStatsData] = await Promise.all([
-        camerasAPI.getAll(),
+        camerasAPI.getAll().catch(() => []),
         analyticsAPI.getSummary({ start_date: startDate, end_date: endDate }),
         workersAPI.getStats().catch(() => ({
           total_workers: 0,

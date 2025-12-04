@@ -29,6 +29,7 @@ interface Alert {
   acknowledged: boolean;
   acknowledged_by: string | null;
   acknowledged_at: string | null;
+  worker_id?: string;
 }
 
 export default function ActiveAlertsPage() {
@@ -227,6 +228,7 @@ export default function ActiveAlertsPage() {
                   <TableRow>
                     <TableHead>Time</TableHead>
                     <TableHead>Severity</TableHead>
+                    <TableHead>Worker</TableHead>
                     <TableHead>Camera</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Message</TableHead>
@@ -248,6 +250,15 @@ export default function ActiveAlertsPage() {
                         >
                           {alert.severity.toUpperCase()}
                         </span>
+                      </TableCell>
+                      <TableCell>
+                        {alert.worker_id ? (
+                          <span className="px-2 py-1 bg-blue-500/10 text-blue-500 rounded text-xs font-medium">
+                            Worker #{alert.worker_id}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">-</span>
+                        )}
                       </TableCell>
                       <TableCell className="font-medium">
                         {alert.camera?.name || 'Unknown'}

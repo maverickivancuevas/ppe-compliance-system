@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Enum, Text
+from sqlalchemy import Column, String, DateTime, Enum, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
@@ -21,8 +21,10 @@ class Camera(Base):
     stream_url = Column(Text, nullable=True)  # Can be URL or device index (e.g., "0" for webcam)
     status = Column(Enum(CameraStatus), default=CameraStatus.ACTIVE)
     description = Column(Text, nullable=True)
+    created_by = Column(String, ForeignKey("users.id"), nullable=True)  # Track who created this camera
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     detection_events = relationship("DetectionEvent", back_populates="camera", cascade="all, delete-orphan")
+    creator = relationship("User", foreign_keys=[created_by])

@@ -13,6 +13,8 @@ class PerformanceSettings(BaseModel):
     use_gpu: Optional[bool] = Field(None, description="Use GPU for inference (if available)")
     input_size: Optional[int] = Field(None, description="Input size for YOLO model (320, 416, 512, 640, 1280)")
     jpeg_quality: Optional[int] = Field(None, ge=1, le=100, description="JPEG compression quality (1-100)")
+    confidence_threshold: Optional[float] = Field(None, ge=0.0, le=1.0, description="Confidence threshold for detections (0.0-1.0)")
+    iou_threshold: Optional[float] = Field(None, ge=0.0, le=1.0, description="IOU threshold for NMS (0.0-1.0)")
 
 
 class PerformanceResponse(BaseModel):
@@ -22,6 +24,8 @@ class PerformanceResponse(BaseModel):
     jpeg_quality: int
     gpu_available: bool
     confidence_threshold: float
+    iou_threshold: float
+    max_det: int
 
 
 @router.get("", response_model=PerformanceResponse)
@@ -54,8 +58,17 @@ async def update_performance_settings(settings: PerformanceSettings):
         if settings.jpeg_quality is not None:
             yolo_service.set_jpeg_quality(settings.jpeg_quality)
 
+        # Update confidence threshold
+        if settings.confidence_threshold is not None:
+            yolo_service.set_confidence_threshold(settings.confidence_threshold)
+
+        # Update IOU threshold
+        if settings.iou_threshold is not None:
+            yolo_service.set_iou_threshold(settings.iou_threshold)
+
         # Return updated settings
         updated_settings = yolo_service.get_performance_settings()
+        logger.info(f"Updated performance settings: conf={updated_settings.get('confidence_threshold')}, iou={updated_settings.get('iou_threshold')}")
         return PerformanceResponse(**updated_settings)
     except Exception as e:
         logger.error(f"Error updating performance settings: {e}")
