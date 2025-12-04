@@ -155,11 +155,15 @@ def send_otp(request: SendOTPRequest, db: Session = Depends(get_db)):
         }
 
     # Send OTP email
-    if not email_service.send_otp_email(request.email, otp):
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to send verification email"
-        )
+    email_sent = email_service.send_otp_email(request.email, otp)
+
+    if not email_sent:
+        # Email failed - return OTP in response for testing/dev
+        return {
+            "message": "Email delivery failed. OTP generated for testing.",
+            "otp": otp,  # Show OTP when email fails
+            "expires_in_minutes": 10
+        }
 
     return {
         "message": "Verification code sent to your email",
