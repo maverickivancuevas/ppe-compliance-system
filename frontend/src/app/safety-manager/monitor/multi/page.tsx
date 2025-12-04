@@ -312,12 +312,6 @@ export default function MultiCameraMonitorPage() {
             console.error(`WebSocket error for ${feed.camera.name}:`, data.message);
             updateFeedData(cameraId, { safetyStatus: data.message });
           }
-
-          if (data.type === 'incident') {
-            // New incident created - reload incidents to show in sidebar
-            console.log('New incident reported via WebSocket:', data.incident);
-            loadIncidents();
-          }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
         }
