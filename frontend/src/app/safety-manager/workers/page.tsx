@@ -24,6 +24,7 @@ import {
   Download,
   CheckCircle,
   Filter,
+  XCircle,
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { workersAPI, camerasAPI } from '@/lib/api';
