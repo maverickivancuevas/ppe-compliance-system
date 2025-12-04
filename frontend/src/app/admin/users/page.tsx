@@ -37,7 +37,7 @@ export default function UsersPage() {
     full_name: '',
     password: '',
     admin_password: '',
-    role: 'safety_manager' as 'admin' | 'safety_manager',
+    role: 'safety_manager' as 'super_admin' | 'admin' | 'safety_manager',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showAdminPassword, setShowAdminPassword] = useState(false);
@@ -330,7 +330,7 @@ export default function UsersPage() {
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      role: e.target.value as 'admin' | 'safety_manager',
+                      role: e.target.value as 'super_admin' | 'admin' | 'safety_manager',
                     })
                   }
                   required
