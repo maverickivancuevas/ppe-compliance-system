@@ -221,6 +221,16 @@ export default function RegisterPage() {
                 <label htmlFor="otp" className="text-sm font-medium">
                   Verification Code
                 </label>
+                {devOtp && (
+                  <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
+                    <p className="text-xs text-yellow-600 dark:text-yellow-400 font-medium mb-1">
+                      Email delivery unavailable. Your verification code is:
+                    </p>
+                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 tracking-wider text-center">
+                      {devOtp}
+                    </p>
+                  </div>
+                )}
                 <Input
                   id="otp"
                   type="text"
