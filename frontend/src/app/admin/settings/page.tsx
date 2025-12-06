@@ -12,11 +12,26 @@ import { Settings as SettingsIcon, Save, Lock, Trash2, AlertTriangle, Archive, C
 export default function SettingsPage() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-  const [generalSettings, setGeneralSettings] = useState({
-    companyName: 'Your Company',
-    systemName: 'PPE Compliance System',
-    logoUrl: '',
-  });
+  // Load initial settings from localStorage to prevent flash
+  const getInitialSettings = () => {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('generalSettings');
+      if (cached) {
+        try {
+          return JSON.parse(cached);
+        } catch (e) {
+          console.error('Failed to parse cached settings:', e);
+        }
+      }
+    }
+    return {
+      companyName: 'Your Company',
+      systemName: 'PPE Compliance System',
+      logoUrl: '',
+    };
+  };
+
+  const [generalSettings, setGeneralSettings] = useState(getInitialSettings());
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [generalLoading, setGeneralLoading] = useState(false);
@@ -68,11 +83,16 @@ export default function SettingsPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setGeneralSettings({
+        const settings = {
           companyName: data.company_name,
           systemName: data.system_name,
           logoUrl: data.logo_url || '',
-        });
+        };
+        setGeneralSettings(settings);
+
+        // Cache settings in localStorage to prevent flash
+        localStorage.setItem('generalSettings', JSON.stringify(settings));
+
         if (data.logo_url) {
           setLogoPreview(data.logo_url);
         }
@@ -162,11 +182,16 @@ export default function SettingsPage() {
 
       if (response.ok) {
         alert('General settings saved successfully!');
-        setGeneralSettings({
+        const settings = {
           companyName: data.company_name,
           systemName: data.system_name,
           logoUrl: data.logo_url || '',
-        });
+        };
+        setGeneralSettings(settings);
+
+        // Cache settings in localStorage to prevent flash
+        localStorage.setItem('generalSettings', JSON.stringify(settings));
+
         setLogoFile(null);
       } else {
         alert(data.detail || 'Failed to save general settings');
