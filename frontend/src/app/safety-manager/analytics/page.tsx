@@ -70,6 +70,11 @@ interface ShiftAnalytics {
   };
 }
 
+// Helper function to format date using local timezone (not UTC)
+const formatLocalDate = (date: Date): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 export default function AnalyticsPage() {
   const [summary, setSummary] = useState<AnalyticsSummary>({
     total_detections: 0,
@@ -87,8 +92,8 @@ export default function AnalyticsPage() {
   const [cameras, setCameras] = useState<any[]>([]);
   const [selectedCamera, setSelectedCamera] = useState<string>('all');
   const [dateRange, setDateRange] = useState({
-    start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    end: new Date().toISOString().split('T')[0],
+    start: formatLocalDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)),
+    end: formatLocalDate(new Date()),
   });
   const [loading, setLoading] = useState(true);
 
@@ -437,16 +442,16 @@ export default function AnalyticsPage() {
               </div>
               <Button size="sm" variant="outline" onClick={() => {
                 setDateRange({
-                  start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                  end: new Date().toISOString().split('T')[0],
+                  start: formatLocalDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)),
+                  end: formatLocalDate(new Date()),
                 });
               }}>
                 Last 7 Days
               </Button>
               <Button size="sm" variant="outline" onClick={() => {
                 setDateRange({
-                  start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                  end: new Date().toISOString().split('T')[0],
+                  start: formatLocalDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)),
+                  end: formatLocalDate(new Date()),
                 });
               }}>
                 Last 30 Days

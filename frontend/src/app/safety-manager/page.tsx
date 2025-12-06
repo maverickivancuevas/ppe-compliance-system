@@ -38,9 +38,11 @@ export default function SafetyManagerDashboard() {
 
   const loadData = async () => {
     try {
-      // Calculate date range for last 7 days to match Analytics page
-      const endDate = new Date().toISOString().split('T')[0];
-      const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      // Calculate date range for last 7 days to match Analytics page (use local date, not UTC)
+      const now = new Date();
+      const endDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const startDate = `${sevenDaysAgo.getFullYear()}-${String(sevenDaysAgo.getMonth() + 1).padStart(2, '0')}-${String(sevenDaysAgo.getDate()).padStart(2, '0')}`;
 
       const [camerasData, detectionStats, workerStatsData] = await Promise.all([
         camerasAPI.getAll().catch(() => []),

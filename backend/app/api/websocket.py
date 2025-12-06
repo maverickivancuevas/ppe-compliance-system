@@ -633,6 +633,22 @@ async def process_camera_stream(
         except Exception as e:
             logger.error(f"Error cleaning up camera tracker for {camera_id}: {e}")
 
+        # Clean up global violation tracking for this camera (prevent false immediate saves on restart)
+        try:
+            # Remove all tracking entries for this camera
+            keys_to_remove = [key for key in manager.worker_violation_start_time.keys() if key.startswith(f"{camera_id}_")]
+            for key in keys_to_remove:
+                if key in manager.worker_violation_start_time:
+                    del manager.worker_violation_start_time[key]
+                if key in manager.last_worker_violation_save_time:
+                    del manager.last_worker_violation_save_time[key]
+                if key in manager.last_worker_screenshot_time:
+                    del manager.last_worker_screenshot_time[key]
+            if keys_to_remove:
+                logger.debug(f"Cleaned up {len(keys_to_remove)} violation tracking entries for camera {camera_id}")
+        except Exception as e:
+            logger.error(f"Error cleaning up violation tracking for {camera_id}: {e}")
+
         # Mark stream as stopped and clean up lock
         manager.mark_stream_stopped(camera_id)
         logger.info(f"Stream cleanup completed for camera {camera_id}")

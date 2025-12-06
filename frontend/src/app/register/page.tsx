@@ -149,21 +149,23 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background to-secondary/20">
+    <div className="flex flex-col min-h-screen bg-background">
       {/* Theme Toggle in Top Right */}
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 z-10">
         <ThemeToggle />
       </div>
 
       {/* Back to Login */}
-      <Link href="/login" className="absolute top-4 left-4">
+      <Link href="/login" className="absolute top-4 left-4 z-10">
         <Button variant="ghost" size="sm">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Login
         </Button>
       </Link>
 
-      <Card className="w-full max-w-md mx-4">
+      {/* Main Content */}
+      <div className="flex-1 flex items-center justify-center p-8">
+        <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
             <div className="p-3 rounded-full bg-primary/10">
@@ -339,6 +341,21 @@ export default function RegisterPage() {
           )}
         </CardContent>
       </Card>
+      </div>
+
+      {/* Footer */}
+      <footer className="border-t bg-background">
+        <div className="container mx-auto px-8 py-6">
+          <div className="flex flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Link href="/about" className="hover:text-primary hover:underline transition-colors font-medium">
+                About PPE Compliance System
+              </Link>
+            </div>
+            <span className="text-center">© 2024 Your Company. All rights reserved.</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

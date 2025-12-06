@@ -10,6 +10,11 @@ import { detectionsAPI, camerasAPI } from '@/lib/api';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+// Helper function to format date using local timezone (not UTC)
+const formatLocalDate = (date: Date): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 interface CapturedRecord {
   id: string;
   type: 'detection';
@@ -38,8 +43,8 @@ export default function CapturedRecordsPage() {
   });
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState({
-    start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    end: new Date().toISOString().split('T')[0],
+    start: formatLocalDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)),
+    end: formatLocalDate(new Date()),
   });
 
   useEffect(() => {
@@ -120,8 +125,8 @@ export default function CapturedRecordsPage() {
     const end = new Date();
     const start = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
     setDateRange({
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0],
+      start: formatLocalDate(start),
+      end: formatLocalDate(end),
     });
   };
 

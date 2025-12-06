@@ -34,7 +34,15 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       set({ token: access_token, user, isLoading: false });
     } catch (error: any) {
-      const message = error.response?.data?.detail || 'Login failed';
+      let message = 'Login failed';
+
+      // Check for specific error types
+      if (error.response?.status === 401) {
+        message = 'Incorrect email or password. Please try again.';
+      } else if (error.response?.data?.detail) {
+        message = error.response.data.detail;
+      }
+
       set({ error: message, isLoading: false });
       throw error;
     }

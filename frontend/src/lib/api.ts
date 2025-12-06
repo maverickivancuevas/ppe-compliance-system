@@ -27,9 +27,13 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        // Only redirect if NOT already on login, forgot-password, or reset-password page
+        const currentPath = window.location.pathname;
+        if (currentPath !== '/login' && currentPath !== '/forgot-password' && currentPath !== '/reset-password') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+        }
       }
     }
     return Promise.reject(error);

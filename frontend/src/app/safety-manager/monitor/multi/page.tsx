@@ -77,6 +77,8 @@ export default function MultiCameraMonitorPage() {
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
   const [confidenceThreshold, setConfidenceThreshold] = useState(0.5);
   const [iouThreshold, setIouThreshold] = useState(0.45);
+  const [inputSize, setInputSize] = useState(640);
+  const [jpegQuality, setJpegQuality] = useState(85);
 
   // View mode state (list or grid)
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
@@ -108,6 +110,8 @@ export default function MultiCameraMonitorPage() {
       const settings = await performanceAPI.get();
       setConfidenceThreshold(settings.confidence_threshold);
       setIouThreshold(settings.iou_threshold);
+      setInputSize(settings.input_size);
+      setJpegQuality(settings.jpeg_quality);
     } catch (error) {
       console.error('Failed to load performance settings:', error);
     }
@@ -256,7 +260,6 @@ export default function MultiCameraMonitorPage() {
               // Use total_violation_count from backend (counts all missing PPE items across all workers)
               // Example: 2 workers missing hardhat + 1 worker missing vest = 3 violations
               const newViolationCount = results.total_violation_count || 0;
-              const wasCompliant = currentFeed.liveData.isCompliant;
 
               // Get person count from backend (actual count of person bounding boxes)
               const personCount = results.person_count || 0;
@@ -285,17 +288,6 @@ export default function MultiCameraMonitorPage() {
                   lastFrameTime: now,
                 },
               });
-
-              // Play sound alert on violation detection (only when transitioning from compliant to violation)
-              if (!results.is_compliant && results.violation_type && wasCompliant && results.person_detected) {
-                console.log('[ALERT] Playing violation alert:', {
-                  violation_type: results.violation_type,
-                  wasCompliant,
-                  person_detected: results.person_detected,
-                  soundEnabled: soundAlertManager.getEnabled()
-                });
-                soundAlertManager.playViolationAlert('high');
-              }
 
               return newFeeds;
             });
@@ -1165,7 +1157,7 @@ export default function MultiCameraMonitorPage() {
 
       {/* Detection Configuration Dialog */}
       <Dialog open={isConfigDialogOpen} onOpenChange={setIsConfigDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Detection Configuration</DialogTitle>
             <DialogDescription>
@@ -1173,6 +1165,7 @@ export default function MultiCameraMonitorPage() {
             </DialogDescription>
           </DialogHeader>
 
+          <ScrollArea className="flex-1 pr-4">
           <div className="space-y-6">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -1221,6 +1214,60 @@ export default function MultiCameraMonitorPage() {
               </div>
             </div>
 
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="resolution">Input Resolution</Label>
+                <span className="text-sm font-medium">{inputSize}px</span>
+              </div>
+              <Select
+                value={inputSize.toString()}
+                onValueChange={(value) => setInputSize(parseInt(value))}
+              >
+                <SelectTrigger id="resolution">
+                  <SelectValue placeholder="Select resolution" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="320">320px - Fastest, Lowest Accuracy</SelectItem>
+                  <SelectItem value="416">416px - Fast</SelectItem>
+                  <SelectItem value="512">512px - Balanced</SelectItem>
+                  <SelectItem value="640">640px - Default</SelectItem>
+                  <SelectItem value="1280">1280px - Best Accuracy, Slowest</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Higher resolutions provide better accuracy for small objects but require more processing power and reduce FPS.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="quality">Stream Quality</Label>
+                <span className="text-sm font-medium">{jpegQuality}% JPEG</span>
+              </div>
+              <Slider
+                id="quality"
+                min={50}
+                max={100}
+                step={5}
+                value={[jpegQuality]}
+                onValueChange={(value) => setJpegQuality(value[0])}
+                className="w-full"
+              />
+              <p className="text-xs text-muted-foreground">
+                Lower quality reduces bandwidth and may increase FPS. Higher quality provides better image clarity but may reduce FPS due to larger file sizes.
+              </p>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Faster (50-70%)</span>
+                <span>Clearer (85-100%)</span>
+              </div>
+            </div>
+
+            <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+              <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                <strong>About FPS:</strong> Frame rate (FPS) is not directly configurable. It depends on your hardware performance, Input Resolution (lower = faster), and Stream Quality (lower = faster). Monitor the live FPS counter on each camera feed.
+              </p>
+            </div>
+
             <div className="p-3 bg-muted rounded-lg space-y-2">
               <h4 className="text-sm font-medium">Current Settings</h4>
               <div className="space-y-1 text-xs">
@@ -1231,6 +1278,14 @@ export default function MultiCameraMonitorPage() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">IOU Threshold:</span>
                   <span className="font-medium">{Math.round(iouThreshold * 100)}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Input Resolution:</span>
+                  <span className="font-medium">{inputSize}px</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Stream Quality:</span>
+                  <span className="font-medium">{jpegQuality}% JPEG</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Model Type:</span>
@@ -1249,8 +1304,9 @@ export default function MultiCameraMonitorPage() {
               </p>
             </div>
           </div>
+          </ScrollArea>
 
-          <DialogFooter>
+          <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setIsConfigDialogOpen(false)}>
               Close
             </Button>
@@ -1259,10 +1315,12 @@ export default function MultiCameraMonitorPage() {
                 await performanceAPI.update({
                   confidence_threshold: confidenceThreshold,
                   iou_threshold: iouThreshold,
+                  input_size: inputSize,
+                  jpeg_quality: jpegQuality,
                 });
                 toast({
                   title: 'Settings Applied',
-                  description: `Confidence: ${Math.round(confidenceThreshold * 100)}%, IOU: ${Math.round(iouThreshold * 100)}%`,
+                  description: `Confidence: ${Math.round(confidenceThreshold * 100)}%, IOU: ${Math.round(iouThreshold * 100)}%, Resolution: ${inputSize}px, Quality: ${jpegQuality}%`,
                 });
                 setIsConfigDialogOpen(false);
               } catch (error: any) {

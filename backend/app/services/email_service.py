@@ -356,6 +356,120 @@ class EmailService:
 
         return self.send_email([email], subject, html_body, text_body)
 
+    def send_password_reset_email(self, email: str, otp: str) -> bool:
+        """
+        Send password reset email with OTP
+
+        Args:
+            email: Recipient email address
+            otp: OTP code for password reset
+
+        Returns:
+            True if email sent successfully, False otherwise
+        """
+        subject = f"{settings.APP_NAME} - Password Reset Request"
+
+        # HTML email body
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                }}
+                .container {{
+                    max-width: 600px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }}
+                .header {{
+                    background-color: #dc2626;
+                    color: white;
+                    padding: 20px;
+                    text-align: center;
+                    border-radius: 5px 5px 0 0;
+                }}
+                .content {{
+                    background-color: #f9f9f9;
+                    padding: 30px 20px;
+                    border: 1px solid #ddd;
+                    border-radius: 0 0 5px 5px;
+                    text-align: center;
+                }}
+                .otp-code {{
+                    font-size: 32px;
+                    font-weight: bold;
+                    letter-spacing: 8px;
+                    color: #dc2626;
+                    background-color: #fee2e2;
+                    padding: 15px 30px;
+                    border-radius: 8px;
+                    display: inline-block;
+                    margin: 20px 0;
+                    border: 2px dashed #dc2626;
+                }}
+                .footer {{
+                    margin-top: 20px;
+                    padding: 10px;
+                    text-align: center;
+                    font-size: 12px;
+                    color: #666;
+                }}
+                .warning {{
+                    color: #dc2626;
+                    font-size: 14px;
+                    margin-top: 20px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h2>🔒 Password Reset Request</h2>
+                </div>
+                <div class="content">
+                    <p>We received a request to reset your password for {settings.APP_NAME}.</p>
+                    <p>Please use the following verification code to reset your password:</p>
+
+                    <div class="otp-code">{otp}</div>
+
+                    <p>This code will expire in <strong>10 minutes</strong>.</p>
+
+                    <p class="warning">
+                        ⚠️ If you didn't request a password reset, please ignore this email and ensure your account is secure.
+                    </p>
+                </div>
+                <div class="footer">
+                    <p>This is an automated email from {settings.APP_NAME}</p>
+                    <p>Do not reply to this email</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        # Plain text body (fallback)
+        text_body = f"""
+        PASSWORD RESET REQUEST
+
+        We received a request to reset your password for {settings.APP_NAME}.
+
+        Your verification code is: {otp}
+
+        This code will expire in 10 minutes.
+
+        If you didn't request a password reset, please ignore this email and ensure your account is secure.
+
+        ---
+        This is an automated email from {settings.APP_NAME}
+        Do not reply to this email
+        """
+
+        return self.send_email([email], subject, html_body, text_body)
+
 
 # Global instance (singleton)
 _email_service = None

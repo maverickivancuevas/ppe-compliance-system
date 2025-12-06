@@ -228,3 +228,98 @@ def register_with_otp(request: RegisterWithOTPRequest, db: Session = Depends(get
     otp_service.clear_otp(request.email)
 
     return UserResponse.from_orm(new_user)
+
+
+# Forgot Password schemas
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    otp: str
+    new_password: str
+
+    @validator('new_password')
+    def validate_password(cls, v):
+        """Validate password strength"""
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        if not re.search(r'[A-Z]', v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not re.search(r'[a-z]', v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not re.search(r'[0-9]', v):
+            raise ValueError('Password must contain at least one digit')
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
+            raise ValueError('Password must contain at least one special character')
+        return v
+
+
+@router.post("/forgot-password")
+def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """Send password reset OTP to user's email"""
+
+    # Check if user exists
+    user = db.query(User).filter(User.email == request.email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account found with this email address"
+        )
+
+    # Generate OTP for password reset
+    otp_service = get_otp_service()
+    otp = otp_service.generate_otp(request.email)
+
+    # Send password reset email
+    email_service = get_email_service()
+
+    # Check if email service is configured
+    if not email_service.is_configured():
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Email service is not configured. Please contact the system administrator."
+        )
+
+    # Send password reset email
+    if not email_service.send_password_reset_email(request.email, otp):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send password reset email. Please try again later."
+        )
+
+    return {
+        "message": "Password reset instructions have been sent to your email",
+        "expires_in_minutes": 10
+    }
+
+
+@router.post("/reset-password")
+def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """Reset password with OTP verification"""
+
+    # Verify OTP
+    otp_service = get_otp_service()
+    if not otp_service.verify_otp(request.email, request.otp):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OTP"
+        )
+
+    # Find user
+    user = db.query(User).filter(User.email == request.email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account found with this email address"
+        )
+
+    # Update password
+    user.hashed_password = get_password_hash(request.new_password)
+    db.commit()
+
+    # Clear OTP after successful password reset
+    otp_service.clear_otp(request.email)
+
+    return {"message": "Password has been reset successfully"}

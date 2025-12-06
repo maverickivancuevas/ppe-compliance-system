@@ -81,7 +81,7 @@ def verify_deletion_pin(
 
     # Find user
     user = db.query(User).filter(User.email == request.email).first()
-    if not user or not user.is_admin:
+    if not user or not user.is_admin_or_above:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials or insufficient permissions"
@@ -125,7 +125,7 @@ def delete_detections_by_days(
 
     # Find user
     user = db.query(User).filter(User.email == request.email).first()
-    if not user or not user.is_admin:
+    if not user or not user.is_admin_or_above:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials or insufficient permissions"
