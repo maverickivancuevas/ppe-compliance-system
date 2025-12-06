@@ -39,7 +39,6 @@ class OTPService:
         }
 
         logger.info(f"Generated OTP for {email} (expires at {expires_at})")
-        logger.info(f"OTP CODE for {email}: {otp}")  # For development - shows OTP in logs
         return otp
 
     def verify_otp(self, email: str, otp: str) -> bool:

@@ -7,14 +7,19 @@ from pathlib import Path
 from datetime import datetime
 from ..core.config import settings
 from ..core.logger import get_logger
+from .sendgrid_service import get_sendgrid_service
 
 logger = get_logger(__name__)
 
 
 class EmailService:
-    """Service for sending email notifications"""
+    """Service for sending email notifications (uses SendGrid or SMTP fallback)"""
 
     def __init__(self):
+        # Initialize SendGrid service
+        self.sendgrid = get_sendgrid_service()
+
+        # SMTP fallback settings
         self.smtp_host = settings.SMTP_HOST
         self.smtp_port = settings.SMTP_PORT
         self.smtp_user = settings.SMTP_USER
@@ -24,8 +29,8 @@ class EmailService:
         self.enabled = settings.EMAIL_ENABLED
 
     def is_configured(self) -> bool:
-        """Check if email service is properly configured"""
-        return self.enabled and bool(self.smtp_user) and bool(self.smtp_password)
+        """Check if email service is properly configured (SendGrid or SMTP)"""
+        return self.sendgrid.is_configured() or (self.enabled and bool(self.smtp_user) and bool(self.smtp_password))
 
     def send_email(
         self,
@@ -50,6 +55,19 @@ class EmailService:
         """
         if not self.is_configured():
             logger.warning("Email service is not configured. Skipping email send.")
+            return False
+
+        # Try SendGrid first (preferred)
+        if self.sendgrid.is_configured():
+            logger.info("Using SendGrid to send email")
+            success = self.sendgrid.send_bulk_email(to_emails, subject, html_body, text_body)
+            if success:
+                return True
+            logger.warning("SendGrid failed, falling back to SMTP")
+
+        # Fallback to SMTP
+        if not (self.enabled and self.smtp_user and self.smtp_password):
+            logger.error("SMTP fallback not configured")
             return False
 
         try:
@@ -78,13 +96,13 @@ class EmailService:
                             img.add_header('Content-Disposition', 'attachment', filename=file_path.name)
                             msg.attach(img)
 
-            # Send email
+            # Send email via SMTP
             with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
                 server.starttls()
                 server.login(self.smtp_user, self.smtp_password)
                 server.sendmail(self.from_email, to_emails, msg.as_string())
 
-            logger.info(f"Email sent successfully to {', '.join(to_emails)}")
+            logger.info(f"SMTP email sent successfully to {', '.join(to_emails)}")
             return True
 
         except Exception as e:

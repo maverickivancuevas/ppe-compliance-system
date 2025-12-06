@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     SMTP_FROM_NAME: str = "PPE Compliance System"
     EMAIL_ENABLED: bool = False  # Enable when SMTP credentials are configured
 
+    # SendGrid Settings (preferred over SMTP)
+    SENDGRID_API_KEY: str = ""  # Set via environment variable
+
     # Email notification recipients (comma-separated)
     ADMIN_EMAIL_RECIPIENTS: str = "admin@example.com"
 

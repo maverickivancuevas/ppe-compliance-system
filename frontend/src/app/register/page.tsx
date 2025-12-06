@@ -21,7 +21,6 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [otpSent, setOtpSent] = useState(false);
-  const [devOtp, setDevOtp] = useState(''); // For development when email not configured
 
   // Password validation states
   const [passwordValidation, setPasswordValidation] = useState({
@@ -60,11 +59,6 @@ export default function RegisterPage() {
 
       if (!response.ok) {
         throw new Error(data.detail || 'Failed to send OTP');
-      }
-
-      // Check if in development mode (email not configured)
-      if (data.otp) {
-        setDevOtp(data.otp);
       }
 
       setOtpSent(true);
@@ -221,16 +215,6 @@ export default function RegisterPage() {
                 <label htmlFor="otp" className="text-sm font-medium">
                   Verification Code
                 </label>
-                {devOtp && (
-                  <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
-                    <p className="text-xs text-yellow-600 dark:text-yellow-400 font-medium mb-1">
-                      Email delivery unavailable. Your verification code is:
-                    </p>
-                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 tracking-wider text-center">
-                      {devOtp}
-                    </p>
-                  </div>
-                )}
                 <Input
                   id="otp"
                   type="text"
@@ -242,7 +226,7 @@ export default function RegisterPage() {
                   disabled={isLoading}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Code expires in 10 minutes
+                  Check your email for the verification code. Code expires in 10 minutes.
                 </p>
               </div>
 
