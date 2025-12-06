@@ -70,6 +70,17 @@ backend/logs/
 backend/uploads/
 uploads/
 
+# Demo Videos (Large MP4 files - exclude from git, use external storage)
+backend/demo_videos/*.mp4
+backend/demo_videos/*.avi
+backend/demo_videos/*.mov
+# Keep the directory and README
+!backend/demo_videos/
+!backend/demo_videos/README.md
+!backend/demo_videos/.gitkeep
+# Exception: Allow the demo file for thesis (8.1MB - safe for git)
+!backend/demo_videos/construction-demo.mp4
+
 # Model Files (Large files)
 *.pt
 !backend/best.pt

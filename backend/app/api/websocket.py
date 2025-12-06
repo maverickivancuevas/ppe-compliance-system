@@ -398,11 +398,15 @@ async def process_camera_stream(
         last_global_compliance_snapshot_time = get_philippine_time_naive()
         compliance_snapshot_interval_seconds = 10  # 10 seconds - frequent enough for accurate compliance metrics
 
-        # Convert stream_source to integer if it's a digit
+        # Convert stream_source to integer if it's a digit, otherwise treat as file path
         try:
             source = int(stream_source)
+            is_video_file = False
         except (ValueError, TypeError):
             source = stream_source
+            # Check if it's a video file (MP4, AVI, MOV, etc.)
+            is_video_file = isinstance(source, str) and any(source.lower().endswith(ext) for ext in ['.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv'])
+            logger.info(f"Detected {'video file' if is_video_file else 'stream URL'}: {source}")
 
         cap = cv2.VideoCapture(source)
 
@@ -420,6 +424,11 @@ async def process_camera_stream(
         cap.set(3, 1280)
         cap.set(4, 720)
 
+        # Get total frame count for video files (for loop support)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) if is_video_file else 0
+        fps = cap.get(cv2.CAP_PROP_FPS) if is_video_file else 30
+        logger.info(f"Stream info - Total frames: {total_frames}, FPS: {fps}, Is video file: {is_video_file}")
+
         # Send success message: Stream started
         await manager.broadcast(camera_id, {
             'type': 'status',
@@ -431,7 +440,17 @@ async def process_camera_stream(
         while cap.isOpened() and manager.is_stream_active(camera_id):
             success, frame = cap.read()
             if not success:
-                break
+                # For video files, loop back to the beginning
+                if is_video_file and total_frames > 0:
+                    logger.info(f"Video {source} reached end, looping back to start")
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Reset to first frame
+                    success, frame = cap.read()
+                    if not success:
+                        logger.error(f"Failed to loop video {source}")
+                        break
+                else:
+                    # For live streams or if loop fails, exit
+                    break
 
             # Perform detection with per-camera worker tracking
             annotated_frame, results = yolo_service.detect_with_tracking(frame, camera_id=camera_id)
