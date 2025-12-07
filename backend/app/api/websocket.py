@@ -447,22 +447,33 @@ async def process_camera_stream(
         frame_count = 0
 
         while cap.isOpened() and manager.is_stream_active(camera_id):
-            success, frame = cap.read()
-            if not success:
-                # For video files, loop back to the beginning
-                if is_video_file and total_frames > 0:
-                    logger.info(f"Video {source} reached end, looping back to start")
-                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Reset to first frame
-                    success, frame = cap.read()
-                    if not success:
-                        logger.error(f"Failed to loop video {source}")
+            try:
+                success, frame = cap.read()
+                if not success:
+                    # For video files, loop back to the beginning
+                    if is_video_file and total_frames > 0:
+                        logger.info(f"Video {source} reached end, looping back to start")
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Reset to first frame
+                        success, frame = cap.read()
+                        if not success:
+                            logger.error(f"Failed to loop video {source}")
+                            break
+                    else:
+                        # For live streams or if loop fails, exit
                         break
-                else:
-                    # For live streams or if loop fails, exit
-                    break
 
-            # Perform detection with per-camera worker tracking
-            annotated_frame, results = yolo_service.detect_with_tracking(frame, camera_id=camera_id)
+                # Perform detection with per-camera worker tracking
+                annotated_frame, results = yolo_service.detect_with_tracking(frame, camera_id=camera_id)
+            except Exception as e:
+                logger.error(f"Error processing frame for camera {camera_id}: {e}", exc_info=True)
+                # Send error to clients
+                await manager.broadcast(camera_id, {
+                    'type': 'error',
+                    'message': f'Frame processing error: {str(e)}'
+                })
+                # Continue to next frame instead of crashing
+                await asyncio.sleep(0.1)
+                continue
 
             # Check for partial visibility
             is_partial, partial_reason = detect_partial_visibility(results)
