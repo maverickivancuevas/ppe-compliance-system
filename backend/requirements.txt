@@ -7,6 +7,7 @@ websockets==12.0
 # Database
 sqlalchemy==2.0.25
 alembic==1.13.1
+psycopg2-binary==2.9.9  # PostgreSQL adapter for Python
 
 # Authentication
 python-jose[cryptography]==3.3.0
