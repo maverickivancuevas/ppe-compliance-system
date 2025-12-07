@@ -196,8 +196,9 @@ export default function MultiCameraMonitorPage() {
     const feed = cameraFeeds.get(cameraId);
     if (!feed) return;
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.hostname}:8000/ws/monitor/${cameraId}`;
+    // Use environment variable for WebSocket URL
+    const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
+    const wsUrl = `${WS_URL}/ws/monitor/${cameraId}`;
 
     try {
       const ws = new WebSocket(wsUrl);
