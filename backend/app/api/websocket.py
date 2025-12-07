@@ -406,6 +406,15 @@ async def process_camera_stream(
             source = stream_source
             # Check if it's a video file (MP4, AVI, MOV, etc.)
             is_video_file = isinstance(source, str) and any(source.lower().endswith(ext) for ext in ['.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv'])
+
+            # If it's a video file and relative path, resolve it relative to backend directory
+            if is_video_file and not source.startswith(('http://', 'https://', 'rtsp://', '/')):
+                # Get the backend directory (parent of 'app' directory)
+                backend_dir = Path(__file__).parent.parent.parent
+                video_path = backend_dir / source
+                source = str(video_path)
+                logger.info(f"Resolved relative video path to: {source}")
+
             logger.info(f"Detected {'video file' if is_video_file else 'stream URL'}: {source}")
 
         cap = cv2.VideoCapture(source)
