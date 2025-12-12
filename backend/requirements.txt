@@ -8,6 +8,9 @@ websockets==12.0
 sqlalchemy==2.0.25
 alembic==1.13.1
 psycopg2-binary==2.9.9  # PostgreSQL adapter for Python
+
+# Supabase Storage - pinned versions to avoid dependency conflicts
+httpx==0.25.2
 supabase==2.3.4  # Supabase Python client for storage
 
 # Authentication
