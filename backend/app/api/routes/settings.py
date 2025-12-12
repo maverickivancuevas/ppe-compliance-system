@@ -81,16 +81,26 @@ async def upload_logo(
     # Generate unique filename
     file_extension = Path(file.filename).suffix
     unique_filename = f"{uuid.uuid4()}{file_extension}"
-    file_path = UPLOAD_DIR / unique_filename
 
-    # Save file
+    # Upload to Supabase Storage
     try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        from app.services.supabase_storage import get_storage_service
+
+        # Read file content
+        file_content = file.file.read()
+
+        # Upload to Supabase Storage
+        storage_service = get_storage_service()
+        logo_url = storage_service.upload_file(
+            bucket_name="logos",
+            file_path=unique_filename,
+            file_data=file_content,
+            content_type=file.content_type
+        )
 
         logger.info(f"Admin {current_user.email} uploaded logo: {unique_filename}")
 
-        return {"logo_url": f"/uploads/logos/{unique_filename}"}
+        return {"logo_url": logo_url}
     except Exception as e:
         logger.error(f"Failed to upload logo: {e}")
         raise HTTPException(

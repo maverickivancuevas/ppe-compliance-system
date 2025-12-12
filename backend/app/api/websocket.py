@@ -225,13 +225,28 @@ async def save_violation_with_snapshot(
     # Capture snapshot for this worker's violation
     snapshot_url = None
     try:
-        upload_dir = Path(settings.UPLOAD_DIR) / "violations" / camera_id
-        upload_dir.mkdir(parents=True, exist_ok=True)
+        from app.services.supabase_storage import get_storage_service
+
         timestamp_str = current_time.strftime("%Y%m%d_%H%M%S")
         filename = f"violation_worker{worker_id}_{timestamp_str}_{uuid.uuid4().hex[:8]}.jpg"
-        filepath = upload_dir / filename
-        cv2.imwrite(str(filepath), annotated_frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
-        snapshot_url = f"/uploads/violations/{camera_id}/{filename}"
+
+        # Encode image to JPEG bytes
+        success, buffer = cv2.imencode('.jpg', annotated_frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
+        if not success:
+            raise Exception("Failed to encode image to JPEG")
+
+        image_bytes = buffer.tobytes()
+
+        # Upload to Supabase Storage
+        storage_service = get_storage_service()
+        file_path = f"{camera_id}/{filename}"
+        snapshot_url = storage_service.upload_file(
+            bucket_name="violations",
+            file_path=file_path,
+            file_data=image_bytes,
+            content_type="image/jpeg"
+        )
+
         logger.info(f"Captured snapshot for Worker #{worker_id} at camera {camera_id}: {snapshot_url}")
     except Exception as e:
         logger.error(f"Failed to capture snapshot for Worker #{worker_id}: {e}")
