@@ -201,15 +201,12 @@ def register_with_otp(request: RegisterWithOTPRequest, db: Session = Depends(get
         )
 
     # Check if this is the first user (becomes super_admin)
+    # OTP verification ensures only authorized users can register
     user_count = db.query(User).count()
     if user_count == 0:
         user_role = "super_admin"  # First user is super_admin
     else:
-        # Subsequent registrations are not allowed - users must be created by super_admin or admin
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Public registration is disabled. Please contact your super admin to create an account."
-        )
+        user_role = "admin"  # Subsequent OTP-verified users become admin
 
     # Create new user
     new_user = User(
