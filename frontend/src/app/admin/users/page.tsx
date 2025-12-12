@@ -384,7 +384,7 @@ export default function UsersPage() {
 
               {!editingUser && (
                 <div className="space-y-2">
-                    <Label htmlFor="admin_password">Your Admin Password*</Label>
+                    <Label htmlFor="admin_password">Your Super Admin Password*</Label>
                     <div className="relative">
                       <Input
                         id="admin_password"
@@ -405,7 +405,7 @@ export default function UsersPage() {
                       </button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Enter your admin password to confirm user creation
+                      Enter your super admin password to confirm user creation
                     </p>
                 </div>
               )}

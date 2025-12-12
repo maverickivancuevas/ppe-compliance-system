@@ -42,9 +42,9 @@ class DeleteDetectionsRequest(BaseModel):
 def set_deletion_pin(
     request: SetPINRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    current_user: User = Depends(get_super_admin_user)
 ):
-    """Set or update the 4-digit PIN for database deletion (Admin only)"""
+    """Set or update the 4-digit PIN for database deletion (Super Admin only)"""
 
     # Verify current password
     if not verify_password(request.current_password, current_user.hashed_password):
@@ -77,14 +77,14 @@ def verify_deletion_pin(
     request: VerifyPINRequest,
     db: Session = Depends(get_db)
 ):
-    """Verify admin credentials and PIN before allowing database operations"""
+    """Verify super admin credentials and PIN before allowing database operations"""
 
     # Find user
     user = db.query(User).filter(User.email == request.email).first()
-    if not user or not user.is_admin_or_above:
+    if not user or user.role != "super_admin":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials or insufficient permissions"
+            detail="Invalid credentials or insufficient permissions. Super admin access required."
         )
 
     # Verify password
@@ -121,14 +121,14 @@ def delete_detections_by_days(
     request: DeleteDetectionsRequest,
     db: Session = Depends(get_db)
 ):
-    """Delete detection events older than specified days (Admin only with PIN verification)"""
+    """Delete detection events older than specified days (Super Admin only with PIN verification)"""
 
     # Find user
     user = db.query(User).filter(User.email == request.email).first()
-    if not user or not user.is_admin_or_above:
+    if not user or user.role != "super_admin":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials or insufficient permissions"
+            detail="Invalid credentials or insufficient permissions. Super admin access required."
         )
 
     # Verify password

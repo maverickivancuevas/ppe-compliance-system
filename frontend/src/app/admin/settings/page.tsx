@@ -753,7 +753,7 @@ export default function SettingsPage() {
               <Input
                 id="currentPassword"
                 type="password"
-                placeholder="Enter your admin password"
+                placeholder="Enter your super admin password"
                 value={pinSettings.currentPassword}
                 onChange={(e) =>
                   setPinSettings({ ...pinSettings, currentPassword: e.target.value })
@@ -912,14 +912,14 @@ export default function SettingsPage() {
             </div>
 
             <div className="border-t pt-4 space-y-4">
-              <p className="text-sm font-medium">Admin Verification Required</p>
+              <p className="text-sm font-medium">Super Admin Verification Required</p>
 
               <div className="space-y-2">
-                <Label htmlFor="deleteEmail">Admin Email *</Label>
+                <Label htmlFor="deleteEmail">Super Admin Email *</Label>
                 <Input
                   id="deleteEmail"
                   type="email"
-                  placeholder="admin@example.com"
+                  placeholder="superadmin@example.com"
                   value={deletionForm.email}
                   onChange={(e) =>
                     setDeletionForm({ ...deletionForm, email: e.target.value })
@@ -928,7 +928,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="deletePassword">Admin Password *</Label>
+                <Label htmlFor="deletePassword">Super Admin Password *</Label>
                 <Input
                   id="deletePassword"
                   type="password"
